@@ -8,17 +8,22 @@ namespace SysBot.Pokemon.Helpers.ShowdownHelpers
         public static GameStrings GetGameStrings()
         {
             if (typeof(T) == typeof(PK8))
-                return GameInfo.GetStrings(GetLanguageIndex(GameVersion.SWSH));
+                return GameInfo.GetStrings(GetLanguageIndex((byte)GameVersion.SWSH));
             if (typeof(T) == typeof(PB8))
-                return GameInfo.GetStrings(GetLanguageIndex(GameVersion.BDSP));
+                return GameInfo.GetStrings(GetLanguageIndex((byte)GameVersion.BDSP));
             if (typeof(T) == typeof(PA8))
-                return GameInfo.GetStrings(GetLanguageIndex(GameVersion.PLA));
+                return GameInfo.GetStrings(GetLanguageIndex((byte)GameVersion.PLA));
             if (typeof(T) == typeof(PK9))
-                return GameInfo.GetStrings(GetLanguageIndex(GameVersion.SV));
+                return GameInfo.GetStrings(GetLanguageIndex((byte)GameVersion.SV));
             if (typeof(T) == typeof(PB7))
-                return GameInfo.GetStrings(GetLanguageIndex(GameVersion.GE));
+                return GameInfo.GetStrings(GetLanguageIndex((byte)GameVersion.GE));
 
             throw new ArgumentException("Type does not have recognized game strings.", typeof(T).Name);
+        }
+
+        private static string GetLanguageIndex(object sWSH)
+        {
+            throw new NotImplementedException();
         }
 
         public static IPersonalAbility12 GetPersonalInfo(ushort speciesIndex)

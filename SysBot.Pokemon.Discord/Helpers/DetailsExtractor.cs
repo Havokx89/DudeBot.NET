@@ -13,7 +13,7 @@ public class DetailsExtractor<T> where T : PKM, new()
 {
     public static EmbedData ExtractPokemonDetails(T pk, SocketUser user, bool isMysteryEgg, bool isCloneRequest, bool isDumpRequest, bool isFixOTRequest, bool isSpecialRequest, bool isBatchTrade, int batchTradeNumber, int totalBatchTrades)
     {
-        var strings = GameInfo.GetStrings(pk.Language);
+        var strings = GameInfo.GetStrings(((LanguageID)pk.Language).ToString());
         var embedData = new EmbedData
         {
             // Basic Pokémon details

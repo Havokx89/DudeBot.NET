@@ -127,7 +127,7 @@ public class TradeStartModule<T> : ModuleBase<SocketCommandContext> where T : PK
             {
                 try
                 {
-                    string rawBallName = GameInfo.GetStrings(1).balllist[detail.TradeData.Ball].Trim();
+                    string rawBallName = GameInfo.GetStrings("en").balllist[detail.TradeData.Ball].Trim();
 
                     if (BallFileMap.TryGetValue(rawBallName, out string fileName))
                     {
