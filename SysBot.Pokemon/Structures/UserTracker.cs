@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace SysBot.Pokemon;
@@ -14,7 +14,6 @@ public class TrackedUserLog
     {
         if (remoteID == 0)
             return null;
-
         lock (_sync)
             return InsertReplace(networkID, name, remoteID);
     }

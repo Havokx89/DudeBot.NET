@@ -8,9 +8,7 @@ public sealed class PokeTradeHubConfig : BaseConfig
 {
     [Browsable(false)]
     private const string BotEncounter = nameof(BotEncounter);
-
     private const string BotTrade = nameof(BotTrade);
-
     private const string Integration = nameof(Integration);
 
     [Category(BotTrade), Description("Name of the Discord Bot the Program is Running. This will Title the window for easier recognition. Requires program restart.")]
@@ -77,5 +75,4 @@ public sealed class PokeTradeHubConfig : BaseConfig
     [Category(BotTrade)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public TradeAbuseSettings TradeAbuse { get; set; } = new();
-
 }

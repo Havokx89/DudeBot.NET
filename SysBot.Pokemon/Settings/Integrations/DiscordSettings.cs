@@ -7,15 +7,10 @@ namespace SysBot.Pokemon;
 public class DiscordSettings
 {
     private const string Channels = nameof(Channels);
-
     private const string Operation = nameof(Operation);
-
     private const string Roles = nameof(Roles);
-
     private const string Servers = nameof(Servers);
-
     private const string Startup = nameof(Startup);
-
     private const string Users = nameof(Users);
 
     public enum EmbedColorOption

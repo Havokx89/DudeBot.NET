@@ -26,49 +26,58 @@ public static class QueueHelper<T> where T : PKM, new()
 
     // A dictionary to hold batch trade file paths and their deletion status
     private static readonly Dictionary<int, List<string>> batchTradeFiles = [];
-
     private static readonly Dictionary<ulong, int> userBatchTradeMaxDetailId = [];
-
     private static readonly ConcurrentDictionary<ulong, int> ActiveBatchIds = new();
-
     private static readonly Dictionary<int, string> MilestoneImages = new()
     {
-        { 1, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/001.png" },
-        { 50, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/050.png" },
-        { 100, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/100.png" },
-        { 150, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/150.png" },
-        { 200, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/200.png" },
-        { 250, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/250.png" },
-        { 300, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/300.png" },
-        { 350, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/350.png" },
-        { 400, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/400.png" },
-        { 450, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/450.png" },
-        { 500, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/500.png" },
-        { 550, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/550.png" },
-        { 600, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/600.png" },
-        { 650, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/650.png" },
-        { 700, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/700.png" }
+        { 1, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0001.png" },
+        { 50, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0050.png" },
+        { 100, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0100.png" },
+        { 150, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0150.png" },
+        { 200, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0200.png" },
+        { 250, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0250.png" },
+        { 300, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0300.png" },
+        { 350, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0350.png" },
+        { 400, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0400.png" },
+        { 450, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0450.png" },
+        { 500, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0500.png" },
+        { 550, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0550.png" },
+        { 600, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0600.png" },
+        { 650, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0650.png" },
+        { 700, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0700.png" },
+        { 750, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0750.png" },
+        { 800, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0800.png" },
+        { 850, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0850.png" },
+        { 900, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0900.png" },
+        { 950, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0950.png" },
+        { 1000, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/1000.png" }
     };
 
     private static string GetMilestoneDescription(int tradeCount)
     {
         return tradeCount switch
         {
-            1 => "Congratulations on your first trade!\n**Status:** Newbie Trainer.",
-            50 => "You've reached 50 trades!\n**Status:** Novice Trainer.",
-            100 => "You've reached 100 trades!\n**Status:** Pokémon Professor.",
-            150 => "You've reached 150 trades!\n**Status:** Pokémon Specialist.",
-            200 => "You've reached 200 trades!\n**Status:** Pokémon Champion.",
-            250 => "You've reached 250 trades!\n**Status:** Pokémon Hero.",
-            300 => "You've reached 300 trades!\n**Status:** Pokémon Elite.",
-            350 => "You've reached 350 trades!\n**Status:** Pokémon Trader.",
-            400 => "You've reached 400 trades!\n**Status:** Pokémon Sage.",
-            450 => "You've reached 450 trades!\n**Status:** Pokémon Legend.",
-            500 => "You've reached 500 trades!\n**Status:** Region Master.",
-            550 => "You've reached 550 trades!\n**Status:** Trade Master.",
-            600 => "You've reached 600 trades!\n**Status:** World Famous.",
-            650 => "You've reached 650 trades!\n**Status:** Pokémon Master.",
-            700 => "You've reached 700 trades!\n**Status:** Pokémon God.",
+            1 => "Congratulations on your first trade!\n**Status:** Beginner Trainer.",
+            50 => "You've reached 50 trades!\n**Status:** Rookie Trainer.",
+            100 => "You've reached 100 trades!\n**Status:** Rising Star.",
+            150 => "You've reached 150 trades!\n**Status:** Challenger.",
+            200 => "You've reached 200 trades!\n**Status:** Master Baiter.",
+            250 => "You've reached 250 trades!\n**Status:** Star Trainer.",
+            300 => "You've reached 300 trades!\n**Status:** Ace Trainer.",
+            350 => "You've reached 350 trades!\n**Status:** Veteran Trainer.",
+            400 => "You've reached 400 trades!\n**Status:** Expert Trainer.",
+            450 => "You've reached 450 trades!\n**Status:** Pokémon Trader.",
+            500 => "You've reached 500 trades!\n**Status:** Pokémon Professor.",
+            550 => "You've reached 550 trades!\n**Status:** Pokémon Champion.",
+            600 => "You've reached 600 trades!\n**Status:** Pokémon Specialist.",
+            650 => "You've reached 650 trades!\n**Status:** Pokémon Hero.",
+            700 => "You've reached 700 trades!\n**Status:** Pokémon Elite.",
+            750 => "You've reached 750 trades!\n**Status:** Pokémon Legend.",
+            800 => "You've reached 800 trades!\n**Status:** Region Master.",
+            850 => "You've reached 850 trades!\n**Status:** Pokémon Master.",
+            900 => "You've reached 900 trades!\n**Status:** World Famous.",
+            950 => "You've reached 950 trades!\n**Status:** Master Trader.",
+            1000 => "You've reached 1000 trades!\n**Status:** Pokémon God.",
             _ => $"Congratulations on reaching {tradeCount} trades! Keep it going!"
         };
     }

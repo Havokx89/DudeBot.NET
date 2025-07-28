@@ -7,22 +7,16 @@ namespace SysBot.Pokemon;
 public enum FavoredMode
 {
     None,
-
     Exponent,
-
     Multiply,
 }
 
 public interface IFavoredCPQSetting
 {
     float Exponent { get; }
-
     int MinimumFreeAhead { get; }
-
     int MinimumFreeBypass { get; }
-
     FavoredMode Mode { get; }
-
     float Multiply { get; }
 }
 
@@ -32,11 +26,8 @@ public interface IFavoredCPQSetting
 public sealed class FavoredCPQ<TKey, TValue> : ConcurrentPriorityQueue<TKey, TValue> where TKey : IComparable<TKey> where TValue : IEquatable<TValue>, IFavoredEntry
 {
     public FavoredCPQ(IFavoredCPQSetting settings) => Settings = settings;
-
     public FavoredCPQ(IEnumerable<KeyValuePair<TKey, TValue>> collection, IFavoredCPQSetting settings) : base(collection) => Settings = settings;
-
     public IFavoredCPQSetting Settings { get; set; }
-
     public void Add(TKey priority, TValue value)
     {
         if (Settings.Mode == FavoredMode.None || !value.IsFavored)

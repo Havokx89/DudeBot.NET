@@ -208,10 +208,6 @@ public abstract class TradeExtensions<T> where T : PKM, new()
         // Clear battle stats
         pk.StatNature = pk.Nature;
         pk.SetEVs([0, 0, 0, 0, 0, 0]);
-        if (pk.Ball is 1)
-        {
-            pk.Ball = 21; // Change to Love Ball if it was a Master Ball
-        }
 
         // Handle PID/EC relationship
         if (pk.Format >= 6 && pk.PID == pk.EncryptionConstant)
@@ -566,12 +562,12 @@ public abstract class TradeExtensions<T> where T : PKM, new()
                 return language switch
                 {
                     "english" or "eng" or "en" => 2,
-                    "french" or "français" or "fra" or "fr" => 3,
-                    "italian" or "italiano" or "ita" or "it" => 4,
-                    "german" or "deutsch" or "deu" or "de" => 5,
-                    "spanish" or "español" or "spa" or "es" => 7,
+                    "french" or "fre" or "fra" or "fr" or "français" => 3,
+                    "italian" or "ita" or "it" or "italiano" => 4,
+                    "german" or "ger" or "deutsch" or "deu" or "de" => 5,
+                    "spanish" or "español" or "spa" or "es" or "esp" => 7,
                     "japanese" or "日本語" or "jpn" or "ja" => 1,
-                    "korean" or "한국어" or "kor" or "ko" => 8,
+                    "korean" or "kor" or "ko" or "한국어" => 8,
                     "chinese simplified" or "中文简体" or "chs" or "zh-cn" => 9,
                     "chinese traditional" or "中文繁體" or "cht" or "zh-tw" => 10,
                     _ => 2 // Default to English if language is not recognized

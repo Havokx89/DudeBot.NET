@@ -10,6 +10,4 @@ public record PokeTradeTrainerInfo
         TrainerName = name;
         ID = id;
     }
-
-    public object DiscordUser { get; internal set; }
 }

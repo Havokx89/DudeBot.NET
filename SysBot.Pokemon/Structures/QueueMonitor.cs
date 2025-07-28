@@ -1,4 +1,4 @@
-﻿using PKHeX.Core;
+using PKHeX.Core;
 using SysBot.Base;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,7 +34,6 @@ public class QueueMonitor<T>(PokeTradeHub<T> Hub)
             EchoUtil.Echo(state);
         }
     }
-
     private static bool UpdateCanQueue(QueueOpening mode, QueueSettings settings, TradeQueueInfo<T> queues, float secWaited)
     {
         return mode switch
@@ -44,7 +43,6 @@ public class QueueMonitor<T>(PokeTradeHub<T> Hub)
             _ => false,
         };
     }
-
     private static bool CheckInterval(QueueSettings settings, TradeQueueInfo<T> queues, float secWaited)
     {
         if (settings.CanQueue)
@@ -64,7 +62,6 @@ public class QueueMonitor<T>(PokeTradeHub<T> Hub)
 
         return true;
     }
-
     private static bool CheckThreshold(QueueSettings settings, TradeQueueInfo<T> queues)
     {
         if (settings.CanQueue)

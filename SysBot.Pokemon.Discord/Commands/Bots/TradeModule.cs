@@ -1631,13 +1631,11 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
     {
         var tradeCodeStorage = new TradeCodeStorage();
         int totalTrades = tradeCodeStorage.GetTradeCount(Context.User.Id);
-
-        if (totalTrades == 0)
+        if (totalTrades < 0)
         {
             await ReplyAsync($"{Context.User.Username}, you haven't made any trades yet. Start trading to earn your first medal!");
             return;
         }
-
         int currentMilestone = GetCurrentMilestone(totalTrades);
 
         var embed = CreateMedalsEmbed(Context.User, currentMilestone, totalTrades);
@@ -1646,7 +1644,7 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
 
     private static int GetCurrentMilestone(int totalTrades)
     {
-        int[] milestones = { 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200, 150, 100, 50, 1 };
+        int[] milestones = {1000, 950, 900, 850, 800, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200, 150, 100, 50, 1 };
         return milestones.FirstOrDefault(m => totalTrades >= m, 0);
     }
 
@@ -1654,21 +1652,27 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
     {
         string status = milestone switch
         {
-            1 => "Newbie Trainer",
-            50 => "Novice Trainer",
-            100 => "Pokémon Professor",
-            150 => "Pokémon Specialist",
-            200 => "Pokémon Champion",
-            250 => "Pokémon Hero",
-            300 => "Pokémon Elite",
-            350 => "Pokémon Trader",
-            400 => "Pokémon Sage",
-            450 => "Pokémon Legend",
-            500 => "Region Master",
-            550 => "Trade Master",
-            600 => "World Famous",
-            650 => "Pokémon Master",
-            700 => "Pokémon God",
+            1 => "Beginner Trainer",
+            50 => "Rookie Trainer",
+            100 => "Rising Star",
+            150 => "Challenger",
+            200 => "Master Baiter",
+            250 => "Star Trainer",
+            300 => "Ace Trainer",
+            350 => "Veteran Trainer",
+            400 => "Expert Trainer",
+            450 => "Pokémon Trader",
+            500 => "Pokémon Professor",
+            550 => "Pokémon Champion",
+            600 => "Pokémon Specialist",
+            650 => "Pokémon Hero",
+            700 => "Pokémon Elite",
+            750 => "Pokémon Legend",
+            800 => "Region Master",
+            850 => "Pokémon Master",
+            900 => "World Famous",
+            950 => "Master Trader",
+            1000 => "Pokémon God",
             _ => "New Trainer"
         };
 
@@ -1676,20 +1680,22 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
 
         if (milestone > 0)
         {
-            string imageUrl = $"https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medals/{milestone:D3}.png";
+            string imageUrl = $"https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/{milestone:D3}.png";
             return new EmbedBuilder()
                 .WithTitle($"{user.Username}'s Trading Status")
                 .WithColor(new Color(255, 215, 0)) // Gold
-                .WithDescription(description)
+                .WithDescription($"{description}\nGotta trade 'em all!")
                 .WithThumbnailUrl(imageUrl)
                 .Build();
         }
         else
         {
+            string imageUrl = $"https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0000.png";
             return new EmbedBuilder()
                 .WithTitle($"{user.Username}'s Trading Status")
-                .WithColor(new Color(255, 215, 0))
-                .WithDescription(description)
+                .WithColor(new Color(0, 255, 0)) // Lime Green
+                .WithDescription($"{description}\nNo trades on record yet, thank you for participating!")
+                .WithThumbnailUrl(imageUrl)
                 .Build();
         }
     }
