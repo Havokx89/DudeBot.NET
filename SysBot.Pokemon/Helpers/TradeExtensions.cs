@@ -185,8 +185,7 @@ public abstract class TradeExtensions<T> where T : PKM, new()
             _ => 60002, //PK8
         };
 
-        pk.MetDate = DateOnly.FromDateTime(DateTime.Now);
-        pk.EggMetDate = pk.MetDate;
+        pk.EggMetDate = DateOnly.FromDateTime(DateTime.Now);
         pk.HeldItem = 0;
         pk.CurrentLevel = 1;
         pk.EXP = 0;
@@ -198,20 +197,19 @@ public abstract class TradeExtensions<T> where T : PKM, new()
             _ => 30002,      // SwSh hatched location (unset)
         };
 
-        // Clear trainer data
-        pk.CurrentHandler = 0;
-        pk.HandlingTrainerName = "";
-        ClearHandlingTrainerTrash(pk);
-        pk.HandlingTrainerFriendship = 0;
-        pk.ClearMemories();
-
-        // Clear battle stats
-        pk.StatNature = pk.Nature;
-        pk.SetEVs([0, 0, 0, 0, 0, 0]);
-        if (pk.Ball is 1)
+        // Set MetDate based on MetLocation
+        // If MetLocation is 0, MetDate fields must also be 0 (per PKHeX validation)
+        if (pk.MetLocation == 0)
         {
-            pk.Ball = 21; // Change to Love Ball if it was a Master Ball
+            pk.MetYear = 0;
+            pk.MetMonth = 0;
+            pk.MetDay = 0;
         }
+        else
+        {
+            pk.MetDate = pk.EggMetDate;
+        }
+
 
         // Handle PID/EC relationship
         if (pk.Format >= 6 && pk.PID == pk.EncryptionConstant)
