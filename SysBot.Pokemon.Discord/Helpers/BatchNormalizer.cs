@@ -5,7 +5,8 @@ using System.Linq;
 using PKHeX.Core;
 
 namespace SysBot.Pokemon.Discord.Helpers
-{ 
+{
+
     /// <summary>
     /// The Batch Commands to be converted into standard Showdown format. ///
     /// </summary>
