@@ -100,7 +100,5 @@ public class LegalitySettings
     [Category(Misc), Description("Zero out HOME trackers for cloned and user-requested PKM files. It is recommended to leave this disabled to avoid creating invalid HOME data."), DisplayName("Reset HOME Tracker")]
     public bool ResetHOMETracker { get; set; } = false;
 
- [Category(Misc), Description("Checks player given Nicknames and Trainer Names for profanity. Bad words will be flagged using the appropriate console's lists.")]
-    public bool CheckWordFilter { get; set; } = false;
 
 }

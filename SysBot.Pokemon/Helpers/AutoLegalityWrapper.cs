@@ -52,7 +52,7 @@ public static class AutoLegalityWrapper
         APILegality.Timeout = cfg.Timeout;
         var settings = ParseSettings.Settings;
         settings.Handler.CheckActiveHandler = false;
-        settings.WordFilter.CheckWordFilter = cfg.CheckWordFilter;
+       
         var validRestriction = new NicknameRestriction { NicknamedTrade = Severity.Fishy, NicknamedMysteryGift = Severity.Fishy };
         settings.Nickname.SetAllTo(validRestriction);
 
