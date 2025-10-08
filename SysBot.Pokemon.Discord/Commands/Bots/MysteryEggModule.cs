@@ -76,15 +76,17 @@ namespace SysBot.Pokemon.Discord
                 {
                     var set = CreateEggShowdownSet(species, context);
                     var template = AutoLegalityWrapper.GetTemplate(set);
-                    var pk = sav.GetLegal(template, out _);
 
-                    if (pk == null)
+                    // Use ALM's GenerateEgg method to properly generate eggs
+                    var pk = sav.GenerateEgg(template, out var result);
+
+                    if (pk == null || result != LegalizationResult.Regenerated)
                         continue;
 
                     pk = EntityConverter.ConvertToType(pk, typeof(T), out _) ?? pk;
                     if (pk is not T validPk)
                         continue;
-                    TradeExtensions<T>.EggTrade(validPk, template);
+                    
 
                     var la = new LegalityAnalysis(validPk);
                     if (la.Valid)

@@ -3,6 +3,7 @@ using Discord.Commands;
 using Discord.Net;
 using Discord.WebSocket;
 using PKHeX.Core;
+using PKHeX.Core.AutoMod;
 using SysBot.Base;
 using SysBot.Pokemon.Discord.Helpers;
 using SysBot.Pokemon.Helpers;
@@ -118,7 +119,22 @@ public static class Helpers<T> where T : PKM, new()
         }
 
         var sav = LanguageHelper.GetTrainerInfoWithLanguage<T>((LanguageID)finalLanguage);
-        var pkm = sav.GetLegal(template, out var result);
+
+        PKM pkm;
+        string result;
+
+        // Generate egg or normal pokemon based on isEgg flag
+        if (isEgg)
+        {
+            // Use ALM's GenerateEgg method for eggs
+            pkm = sav.GenerateEgg(template, out var eggResult);
+            result = eggResult.ToString();
+        }
+        else
+        {
+            // Use normal generation for non-eggs
+            pkm = sav.GetLegal(template, out result);
+        }
 
         if (pkm == null)
         {
@@ -132,14 +148,8 @@ public static class Helpers<T> where T : PKM, new()
         var la = new LegalityAnalysis(pkm);
         var spec = GameInfo.Strings.Species[template.Species];
 
-        // Handle egg logic
-        if (isEgg && pkm is T eggPk)
-        {
-            ApplyEggLogic(eggPk, content);
-            pkm = eggPk;
-            la = new LegalityAnalysis(pkm);
-        }
-        else
+        // Apply standard item logic only for non-eggs
+        if (!isEgg)
         {
             ApplyStandardItemLogic(pkm);
         }
@@ -196,21 +206,7 @@ public static class Helpers<T> where T : PKM, new()
         });
     }
 
-    public static void ApplyEggLogic(T pk, string content)
-    {
-        bool versionSpecified = content.Contains(".Version=", StringComparison.OrdinalIgnoreCase);
-
-        if (!versionSpecified)
-        {
-            if (pk is PB8 pb8)
-                pb8.Version = GameVersion.BD;
-            else if (pk is PK8 pk8)
-                pk8.Version = GameVersion.SW;
-        }
-
-        pk.IsNicknamed = false;
-        TradeExtensions<T>.EggTrade(pk, AutoLegalityWrapper.GetTemplate(new ShowdownSet(content)));
-    }
+    
 
     public static void ApplyStandardItemLogic(PKM pkm)
     {
@@ -224,7 +220,8 @@ public static class Helpers<T> where T : PKM, new()
 
     public static void PrepareForTrade(T pk, ShowdownSet set, byte finalLanguage)
     {
-        if (pk.WasEgg)
+        // Only set EggMetDate for hatched Pokemon, not for unhatched eggs
+        if (pk.WasEgg && !pk.IsEgg)
             pk.EggMetDate = pk.MetDate;
 
         pk.Language = finalLanguage;

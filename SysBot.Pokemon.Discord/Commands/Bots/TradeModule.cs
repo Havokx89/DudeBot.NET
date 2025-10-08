@@ -2,6 +2,7 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using PKHeX.Core;
+using PKHeX.Core.AutoMod;
 using SysBot.Base;
 using SysBot.Pokemon.Discord.Helpers;
 using SysBot.Pokemon.Helpers;
@@ -205,11 +206,16 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
             try
             {
                 var sav = AutoLegalityWrapper.GetTrainerInfo<T>();
-                var pkm = sav.GetLegal(template, out var result);
 
-                if (pkm == null)
+                // Generate the egg using ALM's GenerateEgg method
+                var pkm = sav.GenerateEgg(template, out var result);
+
+                if (result != LegalizationResult.Regenerated)
                 {
-                    await ReplyAsync("Set took too long to legalize.");
+                    var reason = result == LegalizationResult.Timeout
+                           ? "Egg generation took too long."
+                           : "Failed to generate egg from the provided set.";
+                    await Helpers<T>.ReplyAndDeleteAsync(Context, reason, 2);
                     return;
                 }
 
@@ -220,7 +226,7 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
                     return;
                 }
 
-                Helpers<T>.ApplyEggLogic(pk, content);
+                
 
                 var sig = Context.User.GetFavor();
                 await Helpers<T>.AddTradeToQueueAsync(Context, code, Context.User.Username, pk, sig, Context.User).ConfigureAwait(false);
