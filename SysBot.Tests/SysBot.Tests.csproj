@@ -26,5 +26,8 @@
     <Reference Include="PKHeX.Core">
       <HintPath>..\SysBot.Pokemon\deps\PKHeX.Core.dll</HintPath>
     </Reference>
+    <Reference Include="PKHeX.Core.AutoMod">
+      <HintPath>..\SysBot.Pokemon\deps\PKHeX.Core.AutoMod.dll</HintPath>
+    </Reference>
   </ItemGroup>
 </Project>

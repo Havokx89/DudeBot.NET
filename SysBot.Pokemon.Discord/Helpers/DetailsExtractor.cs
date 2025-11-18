@@ -43,7 +43,7 @@ public static class DetailsExtractor<T> where T : PKM, new()
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowLevel ? $"**Level:** {embedData.Level}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowMetDate ? $"**Met Date:** {embedData.MetDate}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowAbility ? $"**Ability:** {embedData.Ability}\n" : "") +
-            (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowNature ? $"**Nature**: {embedData.Nature}\n" : "") +
+            (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowNature ? $"**{embedData.Nature}** Nature\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowIVs ? $"**IVs**: {embedData.IVsDisplay}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowLanguage ? $"**Language**: {embedData.Language}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowEVs && !string.IsNullOrWhiteSpace(embedData.EVsDisplay) ? $"**EVs**: {embedData.EVsDisplay}\n" : "");
