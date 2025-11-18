@@ -209,10 +209,16 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
             }
 
             // Check if we've entered the trade box - this confirms a partner is connected
-            if (await CheckIfInTradeBox(token).ConfigureAwait(false))
+            if (await IsOnMenu(MenuState.InBox, token).ConfigureAwait(false))
             {
                 Log("Trade partner detected!");
                 _wasConnectedToPartner = false; // Reset flag when successfully back to overworld
+
+                // Set the offset for trade partner status monitoring (used in clone mode)
+                var (valid, statusOffset) = await ValidatePointerAll(Offsets.TradePartnerStatusPointer, token).ConfigureAwait(false);
+                if (valid)
+                    TradePartnerStatusOffset = statusOffset;
+
                 return TradePartnerWaitResult.Success;
             }
 
@@ -366,8 +372,8 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
                 warningSent = true;
             }
 
-            // Check if we're still in trade box (partner disconnected if TradeBoxStatusPointer = 0x00)
-            if (!await CheckIfInTradeBox(token).ConfigureAwait(false))
+            // Check if we're still in trade box (partner disconnected if not in InBox menu state)
+            if (!await IsOnMenu(MenuState.InBox, token).ConfigureAwait(false))
             {
                 Log("No longer in trade box - partner declined and exited during offering stage.");
                 detail.SendNotification(this, "Trade partner declined or disconnected.");
@@ -420,8 +426,8 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
                     return PokeTradeResult.Success;
                 }
 
-                // Check if we're still in trade box (partner disconnected if TradeBoxStatusPointer = 0x00)
-                if (!await CheckIfInTradeBox(token).ConfigureAwait(false))
+                // Check if we're still in trade box (partner disconnected if not in InBox menu state)
+                if (!await IsOnMenu(MenuState.InBox, token).ConfigureAwait(false))
                 {
                     Log("No longer in trade box - partner disconnected after confirmation but before animation.");
                     detail.SendNotification(this, "Trade partner disconnected.");
@@ -667,8 +673,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
 
     private async Task<bool> CheckIfOnOverworld(CancellationToken token)
     {
-        var offset = await SwitchConnection.PointerAll(Offsets.OverworldPointer, token).ConfigureAwait(false);
-        return await IsOnOverworld(offset, token).ConfigureAwait(false);
+        return await IsOnMenu(MenuState.Overworld, token).ConfigureAwait(false);
     }
 
     private async Task<bool> CheckIfConnectedOnline(CancellationToken token)
@@ -689,22 +694,6 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         var offset = await SwitchConnection.PointerAll(Offsets.LinkCodeTradePointer, token).ConfigureAwait(false);
         var data = await SwitchConnection.ReadBytesAbsoluteAsync(offset, 4, token).ConfigureAwait(false);
         return BitConverter.ToInt32(data, 0);
-    }
-
-    private async Task<bool> CheckIfInTradeBox(CancellationToken token)
-    {
-        var offset = await SwitchConnection.PointerAll(Offsets.TradeBoxStatusPointer, token).ConfigureAwait(false);
-        var inBox = await IsInTradeBox(offset, token).ConfigureAwait(false);
-
-        if (inBox)
-        {
-            // Set the offset for trade partner status monitoring
-            var (valid, statusOffset) = await ValidatePointerAll(Offsets.TradePartnerStatusPointer, token).ConfigureAwait(false);
-            if (valid)
-                TradePartnerStatusOffset = statusOffset;
-        }
-
-        return inBox;
     }
 
     #endregion
@@ -888,7 +877,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
                 // Wait until we're in the trade box
                 Log("Searching for trade partner...");
                 int boxCheckAttempts = 0;
-                while (!await CheckIfInTradeBox(token).ConfigureAwait(false))
+                while (!await IsOnMenu(MenuState.InBox, token).ConfigureAwait(false))
                 {
                     await Task.Delay(500, token).ConfigureAwait(false);
                     if (++boxCheckAttempts > 30) // 15 seconds max
@@ -1333,8 +1322,13 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
             await Task.Delay(1_000, token).ConfigureAwait(false);
         }
 
-        // Enter the new code
-        await EnterLinkCode(code, Hub.Config, token).ConfigureAwait(false);
+        // If code is 0, skip entering a code (blank code for random matchmaking)
+        if (code != 0)
+        {
+            // Enter the new code
+            await EnterLinkCode(code, Hub.Config, token).ConfigureAwait(false);
+        }
+
         await Click(PLUS, 2_000, token).ConfigureAwait(false);
 
         // Verify the code was entered correctly (memory updates immediately after PLUS)
@@ -1392,7 +1386,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         // Wait until we're in the trade box
         Log("Searching for trade partner...");
         int boxCheckAttempts = 0;
-        while (!await CheckIfInTradeBox(token).ConfigureAwait(false))
+        while (!await IsOnMenu(MenuState.InBox, token).ConfigureAwait(false))
         {
             await Task.Delay(500, token).ConfigureAwait(false);
             if (++boxCheckAttempts > 30) // 15 seconds max
@@ -1692,7 +1686,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
     /// <summary>
     /// Prevents trade soft ban after restarting during an active trade connection.
     ///
-    /// When the bot restarts AFTER successfully connecting to a trade partner (verified via NID or TradeBoxStatusPointer),
+    /// When the bot restarts AFTER successfully connecting to a trade partner (verified via MenuState.InBox),
     /// the game may impose a soft ban if we attempt to trade again without clearing the previous connection state.
     ///
     /// This method connects to a random partner (no code) and immediately disconnects using B+A to signal
@@ -1754,7 +1748,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
                 break;
             }
 
-            if (await CheckIfInTradeBox(token).ConfigureAwait(false))
+            if (await IsOnMenu(MenuState.InBox, token).ConfigureAwait(false))
             {
                 Log("Random partner connected via TradeBox. Disconnecting to complete soft ban prevention...");
                 connected = true;
@@ -1948,31 +1942,27 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
 
         var pkprev = new PA9();
         var warnedAboutTime = false;
+        var bctr = 0;
 
         while (ctr < maxDumps && DateTime.Now - start < time)
         {
+            // Check if we're still in the trade box (user disconnected if not)
+            if (!await IsOnMenu(MenuState.InBox, token).ConfigureAwait(false))
+            {
+                Log("Trade partner disconnected (not in trade box).");
+                break;
+            }
+
+            // Periodic B button press to keep connection alive
+            if (bctr++ % 3 == 0)
+                await Click(B, 0_100, token).ConfigureAwait(false);
+
             // Warn user when they're running low on time
             var elapsed = DateTime.Now - start;
             if (!warnedAboutTime && elapsed.TotalSeconds > time.TotalSeconds - 15)
             {
                 detail.SendNotification(this, "Only 15 seconds remaining! Show your last Pokémon or press B to exit.");
                 warnedAboutTime = true;
-            }
-
-            // Check if we're still in the trade box
-            var (valid, offset) = await ValidatePointerAll(Offsets.TradeBoxStatusPointer, token).ConfigureAwait(false);
-            if (!valid || !await IsInTradeBox(offset, token).ConfigureAwait(false))
-            {
-                Log("User exited trade box.");
-                break;
-            }
-
-            // Check if partner is actually offering (0x3) vs just hovering (0x2)
-            var status = await SwitchConnection.ReadBytesAbsoluteAsync(TradePartnerStatusOffset, 1, token).ConfigureAwait(false);
-            if (status[0] != 0x3)
-            {
-                await Task.Delay(0_050, token).ConfigureAwait(false);
-                continue;
             }
 
             // Wait for the user to show us a Pokemon - needs to be different from the previous one
@@ -2041,8 +2031,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
             return PokeTradeResult.TrainerTooSlow;
 
         TradeSettings.CountStatsSettings.AddCompletedDumps();
-        detail.Notifier.SendNotification(this, detail, $"Dumped {ctr} Pokémon. Press B to exit!");
-        detail.Notifier.TradeFinished(this, detail, detail.TradeData); // blank PA9
+        detail.Notifier.SendNotification(this, detail, $"Dumped {ctr} Pokémon.");
         return PokeTradeResult.Success;
     }
 

@@ -10,15 +10,11 @@ using static SysBot.Pokemon.PokeDataOffsetsPLZA;
 
 namespace SysBot.Pokemon;
 
-public abstract class PokeRoutineExecutor9PLZA : PokeRoutineExecutor<PA9>
+public abstract class PokeRoutineExecutor9PLZA(PokeBotState Config) : PokeRoutineExecutor<PA9>(Config)
 {
     protected const int HidWaitTime = 46;
 
     protected const int KeyboardPressTime = 35;
-
-    protected PokeRoutineExecutor9PLZA(PokeBotState Config) : base(Config)
-    {
-    }
 
     protected PokeDataOffsetsPLZA Offsets { get; } = new();
 
@@ -154,36 +150,6 @@ public abstract class PokeRoutineExecutor9PLZA : PokeRoutineExecutor<PA9>
         return data[0] == 1;
     }
 
-    public async Task<bool> IsInBox(ulong offset, CancellationToken token)
-    {
-        var data = await SwitchConnection.ReadBytesAbsoluteAsync(offset, 1, token).ConfigureAwait(false);
-        return data[0] == 0x14;
-    }
-
-    public async Task<bool> IsInPokePortal(ulong offset, CancellationToken token)
-    {
-        var data = await SwitchConnection.ReadBytesAbsoluteAsync(offset, 1, token).ConfigureAwait(false);
-        return data[0] == 0x10;
-    }
-
-    public async Task<bool> IsOnOverworld(ulong offset, CancellationToken token)
-    {
-        var data = await SwitchConnection.ReadBytesAbsoluteAsync(offset, 1, token).ConfigureAwait(false);
-        return data[0] == 0x00;
-    }
-
-    public async Task<bool> IsOnLinkCodeEntry(ulong offset, CancellationToken token)
-    {
-        var data = await SwitchConnection.ReadBytesAbsoluteAsync(offset, 1, token).ConfigureAwait(false);
-        return data[0] == 0x01;
-    }
-
-    public async Task<bool> IsInTradeBox(ulong offset, CancellationToken token)
-    {
-        var data = await SwitchConnection.ReadBytesAbsoluteAsync(offset, 1, token).ConfigureAwait(false);
-        return data[0] == 0x01;
-    }
-
     public override Task<PA9> ReadBoxPokemon(int box, int slot, CancellationToken token)
     {
         var jumps = Offsets.BoxStartPokemonPointer.ToArray();
@@ -221,8 +187,6 @@ public abstract class PokeRoutineExecutor9PLZA : PokeRoutineExecutor<PA9>
 
     public async Task SetBoxPokemonAbsolute(ulong offset, PA9 pkm, CancellationToken token, ITrainerInfo? sav = null)
     {
-        pkm.ResetPartyStats();
-
         if (sav != null)
         {
             if (pkm.TID16 == 0 && pkm.SID16 == 0)
@@ -240,9 +204,10 @@ public abstract class PokeRoutineExecutor9PLZA : PokeRoutineExecutor<PA9>
                 pkm.FormArgumentElapsed = pkm.FormArgumentMaximum = 0;
                 pkm.FormArgumentRemain = (byte)GetFormArgument(pkm);
             }
-
-            pkm.RefreshChecksum();
         }
+
+        pkm.Heal();
+        pkm.RefreshChecksum();
 
         // PLZA uses party format (344 bytes) + 64 bytes padding per box slot
         var partyData = pkm.EncryptedPartyData;
@@ -359,9 +324,27 @@ public abstract class PokeRoutineExecutor9PLZA : PokeRoutineExecutor<PA9>
 
     private async Task<bool> IsOnOverworldTitle(CancellationToken token)
     {
-        var (valid, offset) = await ValidatePointerAll(Offsets.OverworldPointer, token).ConfigureAwait(false);
-        if (!valid)
-            return false;
-        return await IsOnOverworld(offset, token).ConfigureAwait(false);
+        return await IsOnMenu(MenuState.Overworld, token).ConfigureAwait(false);
+    }
+
+    public async Task<bool> IsOnMenu(MenuState state, CancellationToken token)
+    {
+        var data = await SwitchConnection.ReadBytesMainAsync(MenuOffset, 1, token).ConfigureAwait(false);
+        return (MenuState)data[0] == state;
+    }
+
+    public async Task<MenuState> GetMenuState(CancellationToken token)
+    {
+        var data = await SwitchConnection.ReadBytesMainAsync(MenuOffset, 1, token).ConfigureAwait(false);
+        return (MenuState)data[0];
+    }
+
+    public enum MenuState : byte
+    {
+        Overworld = 0,
+        XMenu = 1,
+        LinkPlay = 2,
+        LinkTrade = 3,
+        InBox = 4,
     }
 }
