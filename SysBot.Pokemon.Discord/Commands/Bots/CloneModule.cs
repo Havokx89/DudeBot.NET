@@ -17,11 +17,11 @@ public class CloneModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
     public async Task CloneAsync(int code)
     {
         // PA9 (Legends Z-A) clone trades are currently disabled
-        if (typeof(T) == typeof(PA9))
-        {
-            await ReplyAsync("Clone trades are currently disabled for Legends Z-A due to bugs. Please try again later.").ConfigureAwait(false);
-            return;
-        }
+        // if (typeof(T) == typeof(PA9))
+        // {
+        //     await ReplyAsync("Clone trades are currently disabled for Legends Z-A due to bugs. Please try again later.").ConfigureAwait(false);
+        //     return;
+        // }
 
         // BDSP clone trades are disabled since v1.2.0
         if (typeof(T) == typeof(PB8))
@@ -65,11 +65,11 @@ public class CloneModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
     public async Task CloneAsync([Summary("Trade Code")][Remainder] string code)
     {
         // PA9 (Legends Z-A) clone trades are currently disabled
-        if (typeof(T) == typeof(PA9))
-        {
-            await ReplyAsync("Clone trades are currently disabled for Legends Z-A due to bugs. Please try again later.").ConfigureAwait(false);
-            return;
-        }
+        // if (typeof(T) == typeof(PA9))
+        // {
+        //     await ReplyAsync("Clone trades are currently disabled for Legends Z-A due to bugs. Please try again later.").ConfigureAwait(false);
+        //     return;
+        // }
 
         // BDSP clone trades are disabled since v1.2.0
         if (typeof(T) == typeof(PB8))

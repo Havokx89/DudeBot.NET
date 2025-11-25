@@ -302,23 +302,10 @@ public abstract class PokeRoutineExecutor9PLZA(PokeBotState Config) : PokeRoutin
         if (code == 0)
             return;
 
-        if (config.UseKeyboard)
+        foreach (var key in TradeUtil.GetPresses(code))
         {
-            char[] codeChars = $"{code:00000000}".ToCharArray();
-            HidKeyboardKey[] keysToPress = new HidKeyboardKey[codeChars.Length];
-            for (int i = 0; i < codeChars.Length; ++i)
-                keysToPress[i] = (HidKeyboardKey)Enum.Parse(typeof(HidKeyboardKey), (int)codeChars[i] >= (int)'A' && (int)codeChars[i] <= (int)'Z' ? $"{codeChars[i]}" : $"D{codeChars[i]}");
-
-            await Connection.SendAsync(SwitchCommand.TypeMultipleKeys(keysToPress), token).ConfigureAwait(false);
-            await Task.Delay((HidWaitTime * 8) + 0_200, token).ConfigureAwait(false);
-        }
-        else
-        {
-            foreach (var key in TradeUtil.GetPresses(code))
-            {
-                int delay = config.Timings.KeypressTime;
-                await Click(key, delay, token).ConfigureAwait(false);
-            }
+            int delay = config.Timings.KeypressTime;
+            await Click(key, delay, token).ConfigureAwait(false);
         }
     }
 

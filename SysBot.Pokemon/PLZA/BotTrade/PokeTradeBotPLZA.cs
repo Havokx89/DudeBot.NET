@@ -34,6 +34,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
     private ulong? _cachedBoxOffset;
     private ulong TradePartnerStatusOffset;
     private bool _wasConnectedToPartner = false;
+    private int _consecutiveConnectionFailures = 0; // Track consecutive online connection failures for soft ban detection
 
     public event EventHandler<Exception>? ConnectionError;
 
@@ -66,6 +67,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
             // Ensure cache is clean on startup
             _cachedBoxOffset = null;
             _wasConnectedToPartner = false;
+            _consecutiveConnectionFailures = 0;
 
             Hub.Queues.Info.CleanStuckTrades();
             await InitializeHardware(Hub.Config.Trade, token).ConfigureAwait(false);
@@ -212,7 +214,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
             if (await IsOnMenu(MenuState.InBox, token).ConfigureAwait(false))
             {
                 Log("Trade partner detected!");
-                _wasConnectedToPartner = false; // Reset flag when successfully back to overworld
+                _wasConnectedToPartner = true; // Mark that we've connected to a partner
 
                 // Set the offset for trade partner status monitoring (used in clone mode)
                 var (valid, statusOffset) = await ValidatePointerAll(Offsets.TradePartnerStatusPointer, token).ConfigureAwait(false);
@@ -469,6 +471,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
             await Click(A, 1_000, token).ConfigureAwait(false);
             await Click(A, 1_000, token).ConfigureAwait(false);
             await Task.Delay(1_000, token).ConfigureAwait(false);
+            _consecutiveConnectionFailures = 0;
         }
         else
         {
@@ -480,12 +483,23 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
                 await Task.Delay(1_000, token).ConfigureAwait(false);
                 if (++attempts > 30)
                 {
-                    Log("Failed to connect online.");
+                    _consecutiveConnectionFailures++;
+                    Log($"Failed to connect online. Consecutive failures: {_consecutiveConnectionFailures}");
+
+                    if (_consecutiveConnectionFailures >= 3)
+                    {
+                        Log("Soft ban detected (3 consecutive connection failures). Waiting 30 minutes...");
+                        await Task.Delay(30 * 60 * 1000, token).ConfigureAwait(false);
+                        Log("30 minute wait complete. Resuming operations.");
+                        _consecutiveConnectionFailures = 0;
+                    }
+
                     return false;
                 }
             }
             await Task.Delay(8_000 + Hub.Config.Timings.ExtraTimeConnectOnline, token).ConfigureAwait(false);
             Log("Connected online.");
+            _consecutiveConnectionFailures = 0;
 
             await Click(A, 1_000, token).ConfigureAwait(false);
             await Click(A, 1_000, token).ConfigureAwait(false);
@@ -536,10 +550,21 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
     private async Task DisconnectFromTrade(CancellationToken token)
     {
         Log("Disconnecting from trade...");
-        await Click(B, 0_500, token).ConfigureAwait(false);
-        await Click(B, 0_500, token).ConfigureAwait(false);
-        await Click(B, 0_500, token).ConfigureAwait(false);
-        await Click(A, 1_000, token).ConfigureAwait(false);
+
+        // Check if we're still in the trade box (connected) or kicked to menu
+        var menuState = await GetMenuState(token).ConfigureAwait(false);
+
+        if (menuState == MenuState.InBox)
+        {
+            // Still in trade box - press B+A to disconnect
+            await Click(B, 0_500, token).ConfigureAwait(false);
+            await Click(A, 1_000, token).ConfigureAwait(false);
+        }
+        else
+        {
+            // Already kicked to menu - only press B to navigate back
+            await Click(B, 0_500, token).ConfigureAwait(false);
+        }
     }
 
     private async Task ExitTradeToOverworld(bool unexpected, CancellationToken token)
@@ -547,7 +572,32 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         if (unexpected)
             Log("Unexpected behavior, recovering to overworld.");
 
-        // Wait 3 seconds after trade completes before attempting to disconnect
+        Log("Exiting trade to overworld...");
+
+        // CRITICAL: Wait for GameState to return to 0x01 before attempting to exit
+        // This ensures the trade animation is completely finished
+        int gameStateWaitTime = 10; // Wait up to 10 seconds for animation to complete
+        int gameStateElapsed = 0;
+        bool animationComplete = false;
+
+        while (gameStateElapsed < gameStateWaitTime)
+        {
+            var currentState = await GetGameState(token).ConfigureAwait(false);
+            if (currentState == 0x01)
+            {
+                animationComplete = true;
+                break;
+            }
+            await Task.Delay(1_000, token).ConfigureAwait(false);
+            gameStateElapsed++;
+        }
+
+        if (!animationComplete)
+        {
+            Log("Trade animation did not complete. Attempting exit anyway...");
+        }
+
+        // Wait 3 seconds after animation completes before attempting to disconnect
         await Task.Delay(3_000, token).ConfigureAwait(false);
 
         // Check if we're already at overworld
@@ -558,14 +608,16 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
             return;
         }
 
-        Log("Exiting trade to overworld...");
+        // Use MenuState to determine whether to disconnect or navigate back
         int timeoutSeconds = 30;
-        int elapsed = 0;
+        int elapsedExit = 0;
 
-        while (elapsed < timeoutSeconds)
+        while (elapsedExit < timeoutSeconds)
         {
+            var menuState = await GetMenuState(token).ConfigureAwait(false);
+
             // Check if we've reached overworld
-            if (await CheckIfOnOverworld(token).ConfigureAwait(false))
+            if (menuState == MenuState.Overworld)
             {
                 Log("Returned to overworld.");
                 StartFromOverworld = true;
@@ -573,40 +625,23 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
                 return;
             }
 
-            // B-A-B pattern: Press B, then A, then B again
-            // This handles both "in box" state (A confirms exit) and normal menu states (B backs out)
-            await Click(B, 1_000, token).ConfigureAwait(false);
-            if (await CheckIfOnOverworld(token).ConfigureAwait(false))
+            if (menuState == MenuState.InBox)
             {
-                Log("Returned to overworld.");
-                StartFromOverworld = true;
-                _wasConnectedToPartner = false;
-                return;
+                // Still in trade box with partner connected - press B+A to disconnect
+                await Click(B, 1_000, token).ConfigureAwait(false);
+                await Click(A, 1_000, token).ConfigureAwait(false);
+            }
+            else
+            {
+                // Partner disconnected (LinkTrade, LinkPlay, XMenu) - just press B
+                await Click(B, 1_000, token).ConfigureAwait(false);
             }
 
-            await Click(A, 1_000, token).ConfigureAwait(false);
-            if (await CheckIfOnOverworld(token).ConfigureAwait(false))
-            {
-                Log("Returned to overworld.");
-                StartFromOverworld = true;
-                _wasConnectedToPartner = false;
-                return;
-            }
-
-            await Click(B, 1_000, token).ConfigureAwait(false);
-            if (await CheckIfOnOverworld(token).ConfigureAwait(false))
-            {
-                Log("Returned to overworld.");
-                StartFromOverworld = true;
-                _wasConnectedToPartner = false;
-                return;
-            }
-
-            elapsed += 3; // 3 seconds per B-A-B cycle
+            elapsedExit++;
         }
 
-        // Failed to return to overworld - restart the game
-        Log("Failed to return to overworld after 30 seconds. Restarting game...");
+        // Failed to exit properly - restart the game
+        Log("Failed to exit trade after 30 seconds. Restarting game...");
         await RestartGamePLZA(token).ConfigureAwait(false);
         StartFromOverworld = true;
     }
@@ -953,6 +988,19 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
             var pokemonBeforeBatchTrade = await ReadPokemon(offsetBeforeBatch, BoxFormatSlotSize, token).ConfigureAwait(false);
             var checksumBeforeBatchTrade = pokemonBeforeBatchTrade.Checksum;
 
+            // Read the partner's offered Pokemon BEFORE we start pressing A to confirm
+            var offeredBatch = await ReadUntilPresentPointer(Offsets.LinkTradePartnerPokemonPointer, 3_000, 0_500, BoxFormatSlotSize, token).ConfigureAwait(false);
+            if (offeredBatch == null || offeredBatch.Species == 0 || !offeredBatch.ChecksumValid)
+            {
+                Log($"Trade {currentTradeIndex + 1} ended because trainer offer was rescinded too quickly.");
+                poke.SendNotification(this, $"Trade partner didn't offer a valid Pokémon for trade {currentTradeIndex + 1}. Canceling remaining trades.");
+                SendCollectedPokemonAndCleanup();
+                await DisconnectFromTrade(token).ConfigureAwait(false);
+                await ExitTradeToOverworld(false, token).ConfigureAwait(false);
+                return PokeTradeResult.TrainerOfferCanceledQuick;
+            }
+
+
             Log($"Confirming trade {currentTradeIndex + 1}/{totalBatchTrades}.");
             var tradeResult = await ConfirmAndStartTrading(poke, checksumBeforeBatchTrade, token).ConfigureAwait(false);
             if (tradeResult != PokeTradeResult.Success)
@@ -975,6 +1023,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
             bool batchTradeAnimationStarted = false;
             bool batchTradeCompleted = false;
             bool batchWarningSent = false;
+            PA9? received = null;
 
             // First, wait for GameState to become 0x02 (trade animation in progress)
             while (elapsedBatch < maxBatchWaitSeconds && !batchTradeAnimationStarted)
@@ -993,13 +1042,20 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
                 if (currentState == 0x02)
                 {
                     batchTradeAnimationStarted = true;
+                    Log($"Trade {currentTradeIndex + 1} animation started");
 
-                    // B1S1 has changed - immediately read and save the received Pokemon
+                    // Read the received Pokemon from B1S1 (Pokemon swap has occurred)
                     boxOffset = await GetBoxStartOffset(token).ConfigureAwait(false);
-                    var receivedPokemon = await ReadPokemon(boxOffset, BoxFormatSlotSize, token).ConfigureAwait(false);
-                    Log($"Trade {currentTradeIndex + 1} confirmed - received {(Species)receivedPokemon.Species}");
+                    received = await ReadPokemon(boxOffset, BoxFormatSlotSize, token).ConfigureAwait(false);
+                    Log($"Trade {currentTradeIndex + 1} - received {(Species)received.Species}");
 
-                    // Immediately inject the next Pokemon if there is one
+                    // Store the received Pokemon for later processing
+                    BatchTracker.AddReceivedPokemon(originalTrainerID, received);
+
+                    // Delay 1500ms
+                    await Task.Delay(1_500, token).ConfigureAwait(false);
+
+                    // Inject the next Pokemon so partner sees it when animation ends
                     if (currentTradeIndex + 1 < totalBatchTrades)
                     {
                         var nextPokemon = tradesToProcess[currentTradeIndex + 1];
@@ -1013,10 +1069,11 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
                         else
                         {
                             // No AutoOT - inject directly
+                            boxOffset = await GetBoxStartOffset(token).ConfigureAwait(false);
                             await SetBoxPokemonAbsolute(boxOffset, nextPokemon, token, sav).ConfigureAwait(false);
                         }
 
-                        Log($"Next Pokemon ({currentTradeIndex + 2}/{totalBatchTrades}) injected into B1S1");
+                        Log($"Next Pokemon ({currentTradeIndex + 2}/{totalBatchTrades}) injected into B1S1 during animation");
                     }
                 }
             }
@@ -1065,14 +1122,10 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
                 return PokeTradeResult.RoutineCancel;
             }
 
-            // Read received Pokemon immediately after trade completes, before injecting next Pokemon
-            boxOffset = await GetBoxStartOffset(token).ConfigureAwait(false);
-            var received = await ReadPokemon(boxOffset, BoxFormatSlotSize, token).ConfigureAwait(false);
-            var checksumAfterBatchTrade = received.Checksum;
-
-            if (checksumBeforeBatchTrade == checksumAfterBatchTrade)
+            // Validate that we received a Pokemon during the animation
+            if (received == null || received.Species == 0)
             {
-                Log($"Batch trade {currentTradeIndex + 1}/{totalBatchTrades} was canceled or did not occur.");
+                Log($"Trade {currentTradeIndex + 1}/{totalBatchTrades} failed - no Pokemon was received.");
                 poke.SendNotification(this, $"Trade {currentTradeIndex + 1}/{totalBatchTrades} was canceled. Canceling remaining trades.");
                 SendCollectedPokemonAndCleanup();
                 await DisconnectFromTrade(token).ConfigureAwait(false);
@@ -1082,32 +1135,6 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
 
             Log($"Trade {currentTradeIndex + 1}/{totalBatchTrades} complete! Received {(Species)received.Species}.");
 
-            // NOW prepare and inject the next Pokemon (after we've read what we received)
-            if (currentTradeIndex + 1 < totalBatchTrades)
-            {
-                Log($"Preparing next Pokémon ({currentTradeIndex + 2}/{totalBatchTrades})...");
-
-                var nextTradeIndex = currentTradeIndex + 1;
-                var nextToSend = tradesToProcess[nextTradeIndex];
-
-                if (nextToSend.Species != 0)
-                {
-                    if (Hub.Config.Legality.UseTradePartnerInfo && !poke.IgnoreAutoOT && cachedTradePartnerInfo != null)
-                    {
-                        nextToSend = await ApplyAutoOT(nextToSend, cachedTradePartnerInfo, sav, token);
-                        tradesToProcess[nextTradeIndex] = nextToSend; // Update the list
-                    }
-                    else
-                    {
-                        // AutoOT not applied, inject directly
-                        var nextBoxOffset = await GetBoxStartOffset(token).ConfigureAwait(false);
-                        await SetBoxPokemonAbsolute(nextBoxOffset, nextToSend, token, sav).ConfigureAwait(false);
-                    }
-                }
-
-                Log($"Next Pokémon prepared and injected!");
-            }
-
             UpdateCountsAndExport(poke, received, toSend);
 
             // Get the trainer NID and name for logging
@@ -1115,7 +1142,6 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
             var logPartner = cachedTradePartnerInfo != null ? new TradePartnerPLZA(cachedTradePartnerInfo) : null;
             LogSuccessfulTrades(poke, logTrainerNID, logPartner?.TrainerName ?? "Unknown");
 
-            BatchTracker.AddReceivedPokemon(originalTrainerID, received);
             completedTrades = currentTradeIndex + 1;
 
             if (completedTrades == totalBatchTrades)
@@ -1496,6 +1522,23 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         var pokemonBeforeTrade = await ReadPokemon(offsetBefore, BoxFormatSlotSize, token).ConfigureAwait(false);
         var checksumBeforeTrade = pokemonBeforeTrade.Checksum;
 
+        // Read the partner's offered Pokemon BEFORE we start pressing A to confirm
+        // This way we can cancel with B+A if they're offering something that will evolve
+        if (offered == null) // Only read if we haven't already (Clone/Dump read it earlier)
+        {
+            offered = await ReadUntilPresentPointer(Offsets.LinkTradePartnerPokemonPointer, 3_000, 0_500, BoxFormatSlotSize, token).ConfigureAwait(false);
+        }
+
+        if (offered == null || offered.Species == 0 || !offered.ChecksumValid)
+        {
+            Log("Trade ended because trainer offer was rescinded too quickly.");
+            poke.SendNotification(this, "Trade partner didn't offer a valid Pokémon.");
+            await DisconnectFromTrade(token).ConfigureAwait(false);
+            await ExitTradeToOverworld(false, token).ConfigureAwait(false);
+            return PokeTradeResult.TrainerOfferCanceledQuick;
+        }
+
+        Log("Confirming trade.");
         var tradeResult = await ConfirmAndStartTrading(poke, checksumBeforeTrade, token).ConfigureAwait(false);
         if (tradeResult != PokeTradeResult.Success)
         {
@@ -2032,6 +2075,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
 
         TradeSettings.CountStatsSettings.AddCompletedDumps();
         detail.Notifier.SendNotification(this, detail, $"Dumped {ctr} Pokémon.");
+        detail.Notifier.TradeFinished(this, detail, pkprev); // Send last dumped Pokemon
         return PokeTradeResult.Success;
     }
 

@@ -21,11 +21,11 @@ public class DumpModule<T> : ModuleBase<SocketCommandContext> where T : PKM, new
             return;
 
         // PA9 (Legends Z-A) dump trades are currently disabled
-        if (typeof(T) == typeof(PA9))
-        {
-            await ReplyAsync("Dump trades are currently disabled for Legends Z-A due to bugs. Please try again later.").ConfigureAwait(false);
-            return;
-        }
+        // if (typeof(T) == typeof(PA9))
+        // {
+        //     await ReplyAsync("Dump trades are currently disabled for Legends Z-A due to bugs. Please try again later.").ConfigureAwait(false);
+        //     return;
+        // }
 
         var sig = Context.User.GetFavor();
         var lgcode = Info.GetRandomLGTradeCode();
@@ -57,11 +57,11 @@ public class DumpModule<T> : ModuleBase<SocketCommandContext> where T : PKM, new
             return;
 
         // PA9 (Legends Z-A) dump trades are currently disabled
-        if (typeof(T) == typeof(PA9))
-        {
-            await ReplyAsync("Dump trades are currently disabled for Legends Z-A due to bugs. Please try again later.").ConfigureAwait(false);
-            return;
-        }
+        // if (typeof(T) == typeof(PA9))
+        // {
+        //     await ReplyAsync("Dump trades are currently disabled for Legends Z-A due to bugs. Please try again later.").ConfigureAwait(false);
+        //     return;
+        // }
 
         int tradeCode = Util.ToInt32(code);
         var sig = Context.User.GetFavor();
