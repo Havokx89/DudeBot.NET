@@ -409,7 +409,7 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
     private async Task ProcessItemTradeAsync(int code, string item)
     {
         Species species = Info.Hub.Config.Trade.TradeConfiguration.ItemTradeSpecies == Species.None
-            ? Species.Diglett
+            ? Species.Pikachu
             : Info.Hub.Config.Trade.TradeConfiguration.ItemTradeSpecies;
 
         var set = new ShowdownSet($"{SpeciesName.GetSpeciesNameGeneration((ushort)species, 2, 8)} @ {item.Trim()}");
@@ -427,10 +427,17 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
 
         if (pkm.HeldItem == 0)
         {
-            await Helpers<T>.ReplyAndDeleteAsync(Context, $"{Context.User.Username}, the item you entered wasn't recognized.", 2);
+            await Helpers<T>.ReplyAndDeleteAsync(Context, $"Sorry, the item you entered wasn't recognized.", 2);
             return;
         }
 
+       if (TradeRestrictions.IsUntradableHeld(pkm.Context, pkm.HeldItem))
+        {
+            await Helpers<T>.ReplyAndDeleteAsync(Context, $"Sorry, the item you entered can't be traded.", 2);
+            return;
+        }
+       
+        
         var la = new LegalityAnalysis(pkm);
         if (pkm is not T pk || !la.Valid)
         {

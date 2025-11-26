@@ -340,9 +340,6 @@ public static class QueueHelper<T> where T : PKM, new()
         var Info = hub.Queues.Info;
         var added = Info.AddToTradeQueue(trade, userID, false, sig == RequestSignificance.Owner);
 
-        // Send trade code once
-        await EmbedHelper.SendTradeCodeEmbedAsync(trader, code).ConfigureAwait(false);
-
         // Start queue position updates for Discord notification
         if (added != QueueResultAdd.AlreadyInQueue && added != QueueResultAdd.NotAllowedItem && notifier is DiscordTradeNotifier<T> discordNotifier)
         {
@@ -381,6 +378,9 @@ public static class QueueHelper<T> where T : PKM, new()
             await context.Channel.SendMessageAsync($"{trader.Mention} - Trade blocked: the held item '{itemName}' cannot be traded in PLZA.").ConfigureAwait(false);
             return;
         }
+
+        // Send trade code once
+        await EmbedHelper.SendTradeCodeEmbedAsync(trader, code).ConfigureAwait(false);
 
         var position = Info.CheckPosition(userID, uniqueTradeID, PokeRoutineType.Batch);
         var botct = Info.Hub.Bots.Count;

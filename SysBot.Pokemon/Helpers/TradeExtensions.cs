@@ -489,7 +489,8 @@ public abstract class TradeExtensions<T> where T : PKM, new()
     /// <summary>
     /// Checks if a Pokemon's held item is blocked from trading.
     /// Uses PKHeX's ItemRestrictions to validate held items for the Pokemon's game context.
-    /// This blocks key items, unreleased items, and items not available in the Pokemon's game.
+    /// This blocks key items, unreleased items, items not available in the Pokemon's game,
+    /// and items that cannot be traded.
     /// </summary>
     /// <param name="pkm">The Pokemon to check</param>
     /// <returns>True if the held item is blocked from trading, false otherwise</returns>
@@ -499,7 +500,15 @@ public abstract class TradeExtensions<T> where T : PKM, new()
         if (held <= 0)
             return false;
 
-        return !ItemRestrictions.IsHeldItemAllowed(held, pkm.Context);
+        // Check if item is not allowed to be held in this game context
+        if (!ItemRestrictions.IsHeldItemAllowed(held, pkm.Context))
+            return true;
+
+        // Check if item cannot be traded
+        if (TradeRestrictions.IsUntradableHeld(pkm.Context, held))
+            return true;
+
+        return false;
     }
 }
 
