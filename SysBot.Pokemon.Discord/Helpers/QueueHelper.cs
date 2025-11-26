@@ -184,7 +184,7 @@ public static class QueueHelper<T> where T : PKM, new()
         {
             var held = pk.HeldItem;
             var itemName = held > 0 ? PKHeX.Core.GameInfo.GetStrings("en").Item[held] : "(none)";
-            await context.Channel.SendMessageAsync($"{trader.Mention} - Trade blocked: the held item '{itemName}' cannot be traded in PLZA.").ConfigureAwait(false);
+            await context.Channel.SendMessageAsync($"{trader.Mention} - Trade blocked: the held item cannot be traded in PLZA.").ConfigureAwait(false);
             return new TradeQueueResult(false);
         }
 
@@ -375,7 +375,7 @@ public static class QueueHelper<T> where T : PKM, new()
         {
             var held = firstTrade.HeldItem;
             var itemName = held > 0 ? PKHeX.Core.GameInfo.GetStrings("en").Item[held] : "(none)";
-            await context.Channel.SendMessageAsync($"{trader.Mention} - Trade blocked: the held item '{itemName}' cannot be traded in PLZA.").ConfigureAwait(false);
+            await context.Channel.SendMessageAsync($"{trader.Mention} - Trade blocked: the held item cannot be traded in PLZA.").ConfigureAwait(false);
             return;
         }
 

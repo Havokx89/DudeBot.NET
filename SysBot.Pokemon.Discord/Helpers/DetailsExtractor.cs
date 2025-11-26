@@ -254,16 +254,25 @@ public static class DetailsExtractor<T> where T : PKM, new()
         return evs;
     }
 
+    // Scrape move names with PP and type emojis
     private static List<string> GetMoveNames(T pk, GameStrings strings)
     {
         ushort[] moves = new ushort[4];
         pk.GetMoves(moves.AsSpan());
-        List<int> movePPs = [pk.Move1_PP, pk.Move2_PP, pk.Move3_PP, pk.Move4_PP];
+        List<int> movePPs = new() { pk.Move1_PP, pk.Move2_PP, pk.Move3_PP, pk.Move4_PP };
         var moveNames = new List<string>();
 
+        // Prepare type emojis dictionary
         var typeEmojis = SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.CustomTypeEmojis
             .Where(e => !string.IsNullOrEmpty(e.EmojiCode))
             .ToDictionary(e => (PKHeX.Core.MoveType)e.MoveType, e => $"{e.EmojiCode}");
+
+        // PLUS MOVE emoji
+        string plusEmoji = string.Empty;
+        var plusEmojiString = SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.UsePlusMoveEmoji?.EmojiString;
+        if (!string.IsNullOrWhiteSpace(plusEmojiString))
+            plusEmoji = $" {plusEmojiString}";
+
 
         for (int i = 0; i < moves.Length; i++)
         {
@@ -271,12 +280,30 @@ public static class DetailsExtractor<T> where T : PKM, new()
             string moveName = strings.movelist[moves[i]];
             byte moveTypeId = MoveInfo.GetType(moves[i], default);
             PKHeX.Core.MoveType moveType = (PKHeX.Core.MoveType)moveTypeId;
-            string formattedMove = $"{moveName} ({movePPs[i]}pp)";
+
+            // For PLZA (PA9) we skip the PP entirely
+            bool isPLZA = pk is PA9;
+
+            string formattedMove = isPLZA
+                ? $"{moveName}" // no PP
+                : $"{moveName} ({movePPs[i]} PP)"; // normal games include PP
+
+            // Add type emoji
+
             if (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.MoveTypeEmojis && typeEmojis.TryGetValue(moveType, out var moveEmoji))
             {
                 formattedMove = $"{moveEmoji} {formattedMove}";
             }
-            moveNames.Add($"\u200B{formattedMove}");
+
+            if (isPLZA && pk is PA9 pa9 && pa9.PersonalInfo is IPermitPlus plus)
+            {
+                int plusIndex = plus.PlusMoveIndexes.IndexOf(moves[i]);
+                if (plusIndex >= 0 && pa9.GetMovePlusFlag(plusIndex))
+                {
+                    formattedMove += !string.IsNullOrWhiteSpace(plusEmoji) ? plusEmoji : " (*+*)";
+                }
+            }
+            moveNames.Add($"- {formattedMove}");
         }
 
         return moveNames;

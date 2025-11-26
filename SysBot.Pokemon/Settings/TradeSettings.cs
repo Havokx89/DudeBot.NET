@@ -1,5 +1,6 @@
 using PKHeX.Core;
 using SysBot.Base;
+using Discord;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -180,13 +181,17 @@ public class TradeSettings : IBotStateSettings, ICountSettings
         [Category(EmbedSettings), Description("The emoji information for displaying mystery gift status."), DisplayName("Mystery Gift Emoji")]
         public EmojiInfo MysteryGiftEmoji { get; set; } = new EmojiInfo();
 
-        [Category(EmbedSettings), Description("The emoji information for displaying the alpha mark."), DisplayName("Alpha Mark Emoji")]
+        [Category(EmbedSettings), Description("The emoji information for displaying the alpha mark in SV."), DisplayName("SV Alpha Mark Emoji")]
         public EmojiInfo AlphaMarkEmoji { get; set; } = new EmojiInfo();
+
+        [Category(EmbedSettings), Description("The emoji information for displaying Plus Moves to applicable Moves in the Discord embed."), DisplayName("Plus Move Emoji")]
+        public EmojiInfo UsePlusMoveEmoji { get; set; } = new EmojiInfo();
+
 
         [Category(EmbedSettings), Description("The emoji information for displaying the mightiest mark."), DisplayName("Mightiest Mark Emoji")]
         public EmojiInfo MightiestMarkEmoji { get; set; } = new EmojiInfo();
 
-        [Category(EmbedSettings), Description("The emoji information for displaying the alpha emoji in Legends: Arceus."), DisplayName("Alpha PLA Emoji")]
+        [Category(EmbedSettings), Description("The emoji information for displaying the alpha emoji in Legends: Arceus & ZA."), DisplayName("Alpha PLA/PLZA Emoji")]
         public EmojiInfo AlphaPLAEmoji { get; set; } = new EmojiInfo();
 
         [Category(EmbedSettings), Description("Will show Move Type Icons next to moves in trade embed (Discord only). Requires user to upload the emojis to their server."), DisplayName("Show Tera Type Emojis?")]
