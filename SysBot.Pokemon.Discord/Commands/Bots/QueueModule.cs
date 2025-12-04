@@ -116,44 +116,16 @@ public class QueueModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
 
     [Command("queueList")]
     [Alias("ql")]
-    [Summary("Shows a nice embed of the current queue with species, trade type, and username.")]
+    [Summary("Private messages the list of users in the queue.")]
     [RequireSudo]
     public async Task ListUserQueue()
     {
-        var queue = SysCord<T>.Runner.Hub.Queues.Info.GetUserList("{4}|{2}|{3}"); // Species|Type|Username
-
-        if (!queue.Any())
-        {
+        var lines = SysCord<T>.Runner.Hub.Queues.Info.GetUserList("(ID {0}) - Code: {1} - {2} - {3}");
+        var msg = string.Join("\n", lines);
+        if (msg.Length < 3)
             await ReplyAsync("Queue list is empty.").ConfigureAwait(false);
-            return;
-        }
-
-        var embedBuilder = new EmbedBuilder()
-            .WithTitle($"📋 Current Trade Queue ({queue.Count()} users)")
-            .WithColor(Color.Blue)
-            .WithCurrentTimestamp();
-
-        var queueList = queue.Select((entry, index) =>
-        {
-            var parts = entry.Split('|');
-            var species = parts[0];
-            var tradeType = parts[1];
-            var username = parts[2];
-
-            return $"`{index + 1}.` **{species}** - {tradeType} - *{username}*";
-        });
-
-        var description = string.Join("\n", queueList);
-
-        // Discord embeds have a 4096 character limit for description
-        if (description.Length > 4000)
-        {
-            description = description.Substring(0, 4000) + "\n... (list truncated)";
-        }
-
-        embedBuilder.WithDescription(description);
-
-        await ReplyAsync(embed: embedBuilder.Build()).ConfigureAwait(false);
+        else
+            await Context.User.SendMessageAsync(msg).ConfigureAwait(false);
     }
 
     [Command("queueToggle")]

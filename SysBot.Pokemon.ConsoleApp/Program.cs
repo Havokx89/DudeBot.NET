@@ -3,7 +3,6 @@ using SysBot.Base;
 using SysBot.Pokemon.Z3;
 using System;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -19,17 +18,17 @@ public static class Program
         var cfg = new ProgramConfig { Bots = [bot] };
         var created = JsonSerializer.Serialize(cfg, ProgramConfigContext.Default.ProgramConfig);
         File.WriteAllText(ConfigPath, created);
-        LogUtil.LogInfo("SysBot", "Created new config file since none was found in the program's path. Please configure it and restart the program.");
-        LogUtil.LogInfo("SysBot", "It is suggested to configure this config file using the GUI project if possible, as it will help you assign values correctly.");
-        LogUtil.LogInfo("SysBot", "Press any key to exit.");
+        Console.WriteLine("Created new config file since none was found in the program's path. Please configure it and restart the program.");
+        Console.WriteLine("It is suggested to configure this config file using the GUI project if possible, as it will help you assign values correctly.");
+        Console.WriteLine("Press any key to exit.");
         Console.ReadKey();
     }
 
     private static void Main(string[] args)
     {
-        LogUtil.LogInfo("SysBot", "Starting up...");
+        Console.WriteLine("Starting up...");
         if (args.Length > 1)
-            LogUtil.LogInfo("SysBot", "This program does not support command line arguments.");
+            Console.WriteLine("This program does not support command line arguments.");
 
         if (!File.Exists(ConfigPath))
         {
@@ -46,7 +45,7 @@ public static class Program
         }
         catch (Exception)
         {
-            LogUtil.LogInfo("SysBot", "Unable to start bots with saved config file. Please copy your config from the WinForms project or delete it and reconfigure.");
+            Console.WriteLine("Unable to start bots with saved config file. Please copy your config from the WinForms project or delete it and reconfigure.");
             Console.ReadKey();
         }
     }
@@ -65,13 +64,13 @@ public static class BotContainer
         {
             bot.Initialize();
             if (!AddBot(env, bot, prog.Mode))
-                LogUtil.LogInfo("SysBot", $"Failed to add bot: {bot}");
+                Console.WriteLine($"Failed to add bot: {bot}");
         }
 
         LogUtil.Forwarders.Add(ConsoleForwarder.Instance);
         env.StartAll();
-        LogUtil.LogInfo("SysBot", $"Started all bots (Count: {prog.Bots.Length}).");
-        LogUtil.LogInfo("SysBot", "Press any key to stop execution and quit. Feel free to minimize this window!");
+        Console.WriteLine($"Started all bots (Count: {prog.Bots.Length}.");
+        Console.WriteLine("Press any key to stop execution and quit. Feel free to minimize this window!");
         Console.ReadKey();
         env.StopAll();
     }
@@ -80,7 +79,7 @@ public static class BotContainer
     {
         if (!cfg.IsValid())
         {
-            LogUtil.LogInfo("SysBot", $"{cfg}'s config is not valid.");
+            Console.WriteLine($"{cfg}'s config is not valid.");
             return false;
         }
 
@@ -91,7 +90,7 @@ public static class BotContainer
         }
         catch
         {
-            LogUtil.LogInfo("SysBot", $"Current Mode ({mode}) does not support this type of bot ({cfg.CurrentRoutineType}).");
+            Console.WriteLine($"Current Mode ({mode}) does not support this type of bot ({cfg.CurrentRoutineType}).");
             return false;
         }
         try
@@ -100,11 +99,11 @@ public static class BotContainer
         }
         catch (ArgumentException ex)
         {
-            LogUtil.LogInfo("SysBot", ex.Message);
+            Console.WriteLine(ex.Message);
             return false;
         }
 
-        LogUtil.LogInfo("SysBot", $"Added: {cfg}: {cfg.InitialRoutine}");
+        Console.WriteLine($"Added: {cfg}: {cfg.InitialRoutine}");
         return true;
     }
 

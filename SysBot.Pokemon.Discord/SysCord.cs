@@ -119,6 +119,13 @@ public sealed class SysCord<T> where T : PKM, new()
             //MessageCacheSize = 50,
         });
 
+        _client = new DiscordSocketClient(new DiscordSocketConfig
+        {
+            LogLevel = LogSeverity.Info,
+            GatewayIntents = Guilds | GuildMessages | DirectMessages | GuildMembers | GuildPresences | MessageContent,
+        });
+
+
         // ===== DM Relay Setup =====
         ulong forwardTargetId = 0;
         if (!string.IsNullOrWhiteSpace(Hub.Config.Discord.UserDMsToBotForwarder))
@@ -645,12 +652,6 @@ public sealed class SysCord<T> where T : PKM, new()
 
         // Restore Echoes
         EchoModule.RestoreChannels(_client, Hub.Config.Discord);
-
-        // Subscribe to queue status changes
-        QueueMonitor<T>.OnQueueStatusChanged = async (isFull, currentCount, maxCount) =>
-        {
-            await EchoModule.SendQueueStatusEmbedAsync(isFull, currentCount, maxCount).ConfigureAwait(false);
-        };
 
         // Restore Logging
         LogModule.RestoreLogging(_client, Hub.Config.Discord);

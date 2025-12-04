@@ -40,6 +40,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
 
     public event EventHandler<Exception>? ConnectionError;
     public event EventHandler? ConnectionSuccess;
+    public event Action<int>? TradeProgressChanged;
+
 
     public ICountSettings Counts => TradeSettings;
 
@@ -122,6 +124,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         }
 
         Log($"Ending {nameof(PokeTradeBotBS)} loop.");
+
         await HardStop().ConfigureAwait(false);
     }
 
@@ -135,6 +138,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         if (!t.IsCancellationRequested)
         {
             Log("Restarting the main loop.");
+
             await MainLoop(t).ConfigureAwait(false);
         }
     }
@@ -204,7 +208,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         return ((ulong)trainerID << 32) | (uint)nameHash;
     }
 
-    private async Task<PB8> ApplyAutoOT(PB8 toSend, SAV8BS sav, string tradePartner, uint trainerTID7, uint trainerSID7, byte trainerGender, CancellationToken token)
+    private async Task<PB8> ApplyAutoOT(PB8 toSend, SAV8BS sav, string tradePartner, uint trainerTID7, uint trainerSID7, CancellationToken token)
     {
         if (token.IsCancellationRequested) return toSend;
 
@@ -240,6 +244,18 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
 
         // Check if the Pokémon is from a Mystery Gift
         bool isMysteryGift = toSend.FatefulEncounter;
+
+        // Check if Mystery Gift has legitimate preset OT/TID/SID (not PKHeX defaults)
+        bool hasDefaultTrainerInfo = toSend.OriginalTrainerName.Equals("FreeMons.Org", StringComparison.OrdinalIgnoreCase) &&
+                                    toSend.TID16 == 12345 &&
+                                    toSend.SID16 == 54321;
+
+        if (isMysteryGift && !hasDefaultTrainerInfo)
+        {
+            Log("Mystery Gift with preset OT/TID/SID detected. Skipping AutoOT entirely.");
+            return toSend;
+        }
+
         var cln = toSend.Clone();
 
         if (isMysteryGift)
@@ -256,7 +272,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
             cln.TrainerTID7 = trainerTID7;
             cln.TrainerSID7 = trainerSID7;
             cln.OriginalTrainerName = tradePartner;
-            cln.OriginalTrainerGender = trainerGender;
+            // Any additional properties that would normally be set for BDSP
         }
 
         ClearOTTrash(cln, tradePartner);
@@ -371,6 +387,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
 
             string tradetype = $" ({detail.Type})";
             Log($"Starting next {type}{tradetype} Bot Trade. Getting data...");
+            TradeProgressChanged?.Invoke(7);
+
             await Task.Delay(500, token).ConfigureAwait(false);
             Hub.Config.Stream.StartTrade(this, detail, Hub);
             Hub.Queues.StartTrade(this, detail);
@@ -425,12 +443,16 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         await Click(A, 1_000, token).ConfigureAwait(false); // Would you like to enter? Screen
 
         Log("Selecting Link Code room.");
+        TradeProgressChanged?.Invoke(14);
+
 
         // Link code selection index
         await Click(DDOWN, 0_200, token).ConfigureAwait(false);
         await Click(DDOWN, 0_200, token).ConfigureAwait(false);
 
         Log("Connecting to internet.");
+        TradeProgressChanged?.Invoke(21);
+
         await Click(A, 0_050, token).ConfigureAwait(false);
         await PressAndHold(A, 2_000, 0, token).ConfigureAwait(false);
 
@@ -453,6 +475,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         await Click(A, 0_500, token).ConfigureAwait(false);
 
         Log("Saving the game.");
+        TradeProgressChanged?.Invoke(28);
+
 
         // Agree and save the game.
         await Click(A, 0_050, token).ConfigureAwait(false);
@@ -461,6 +485,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         if (tradeType != PokeTradeType.Random)
             Hub.Config.Stream.StartEnterCode(this);
         Log($"Entering Link Trade code: {tradeCode:0000 0000}...");
+        TradeProgressChanged?.Invoke(35);
+
         await EnterLinkCode(tradeCode, Hub.Config, token).ConfigureAwait(false);
 
         // Wait for Barrier to trigger all bots simultaneously.
@@ -470,6 +496,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         await Click(PLUS, 0_600, token).ConfigureAwait(false);
         Hub.Config.Stream.EndEnterCode(this);
         Log("Entering the Union Room.");
+        TradeProgressChanged?.Invoke(42);
+
 
         // Wait until we're past the communication message.
         int tries = 100;
@@ -495,6 +523,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         if (await IsUnionWork(UnionTalkingOffset, token).ConfigureAwait(false))
         {
             Log("Exiting box...");
+
             int tries = 30;
             while (await IsUnionWork(UnionTalkingOffset, token).ConfigureAwait(false))
             {
@@ -526,6 +555,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         if (await IsUnionWork(UnionGamingOffset, token).ConfigureAwait(false))
         {
             Log("Exiting Union Room...");
+
             for (int i = 0; i < 3; ++i)
                 await Click(B, 0_200, token).ConfigureAwait(false);
 
@@ -555,7 +585,6 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
 
         var id = await SwitchConnection.PointerPeek(4, Offsets.LinkTradePartnerIDPointer, token).ConfigureAwait(false);
         var name = await SwitchConnection.PointerPeek(TradePartnerBS.MaxByteLengthStringObject, Offsets.LinkTradePartnerNamePointer, token).ConfigureAwait(false);
-
         // Read gender from first byte of param data
         var genderByte = await SwitchConnection.PointerPeek(1, Offsets.LinkTradePartnerParamPointer, token).ConfigureAwait(false);
 
@@ -575,10 +604,13 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
             detail.IsRetry = true;
             Hub.Queues.Enqueue(type, detail, Math.Min(priority, PokeTradePriorities.Tier2));
             detail.SendNotification(this, "Oops! Something happened. I'll requeue you for another attempt.");
+
         }
         else
         {
             detail.SendNotification(this, $"Oops! Something happened. Canceling the trade: {result}.");
+            TradeProgressChanged?.Invoke(0);
+
             detail.TradeCanceled(this, result);
         }
     }
@@ -591,13 +623,16 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         var la = new LegalityAnalysis(offered);
         if (!la.Valid)
         {
-            Log($"Clone request (from {poke.Trainer.TrainerName}) has detected an invalid Pokémon: {GameInfo.GetStrings("en").Species[offered.Species]}.");
+            Log($"Clone request (from {poke.Trainer.TrainerName}) has detected an invalid Pokémon: {LanguageHelper.GetLocalizedSpeciesLog(offered)}.");
+
             if (DumpSetting.Dump)
                 DumpPokemon(DumpSetting.DumpFolder, "hacked", offered);
 
             var report = la.Report();
             Log(report);
             poke.SendNotification(this, "This Pokémon is not legal per PKHeX's legality checks. I am forbidden from cloning this. Exiting trade.");
+            TradeProgressChanged?.Invoke(0);
+
             poke.SendNotification(this, report);
 
             return (offered, PokeTradeResult.IllegalTrade);
@@ -608,7 +643,9 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
             clone.Tracker = 0;
 
         poke.SendNotification(this, $"**Cloned your {GameInfo.GetStrings("en").Species[clone.Species]}!**\nNow press B to cancel your offer and trade me a Pokémon you don't want.");
-        Log($"Cloned a {GameInfo.GetStrings("en").Species[clone.Species]}. Waiting for user to change their Pokémon...");
+        Log($"Cloned a {LanguageHelper.GetLocalizedSpeciesLog(clone)}. Waiting for user to change their Pokémon...");
+        TradeProgressChanged?.Invoke(84);
+
 
         // For BDSP, we need to read from LinkTradePokemonOffset instead of TradePartnerOfferedOffset
         var partnerFound = await ReadUntilChanged(LinkTradePokemonOffset, await SwitchConnection.ReadBytesAbsoluteAsync(LinkTradePokemonOffset, 8, token).ConfigureAwait(false), 15_000, 0_200, false, true, token).ConfigureAwait(false);
@@ -624,6 +661,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         if (!await IsUnionWork(UnionGamingOffset, token).ConfigureAwait(false))
         {
             Log("User cancelled the trade. Exiting...");
+            TradeProgressChanged?.Invoke(0);
+
             await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false);
             return (offered, PokeTradeResult.TrainerTooSlow);
         }
@@ -632,6 +671,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         if (!partnerFound || pk2 is null || SearchUtil.HashByDetails(pk2) == SearchUtil.HashByDetails(offered))
         {
             Log("Trade partner did not change their Pokémon.");
+            TradeProgressChanged?.Invoke(0);
+
             await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false);
             return (offered, PokeTradeResult.TrainerTooSlow);
         }
@@ -654,6 +695,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         if (!adOT && laInit.Valid)
         {
             poke.SendNotification(this, "No ad detected in Nickname or OT, and the Pokémon is legal. Exiting trade.");
+            TradeProgressChanged?.Invoke(0);
+
             return (offered, PokeTradeResult.TrainerRequestBad);
         }
 
@@ -677,7 +720,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
 
         if (!laInit.Valid)
         {
-            Log($"FixOT request has detected an illegal Pokémon from {name}: {(Species)offered.Species}");
+            Log($"FixOT request has detected an illegal Pokémon from {name}: {LanguageHelper.GetLocalizedSpeciesLog(offered)}");
             var report = laInit.Report();
             Log(laInit.Report());
             poke.SendNotification(this, $"**Shown Pokémon is not legal. Attempting to regenerate...**\n\n```{report}```");
@@ -702,17 +745,19 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         var la = new LegalityAnalysis(clone);
         clone = (PB8)TradeExtensions<PB8>.TrashBytes(clone, la);
         clone.ResetPartyStats();
-
         la = new LegalityAnalysis(clone);
         if (!la.Valid)
         {
             poke.SendNotification(this, "This Pokémon is not legal per PKHeX's legality checks. I was unable to fix this. Exiting trade.");
+            TradeProgressChanged?.Invoke(0);
+
             return (clone, PokeTradeResult.IllegalTrade);
         }
 
         TradeExtensions<PB8>.HasAdName(offered, out string detectedAd);
         poke.SendNotification(this, $"{(!laInit.Valid ? "**Legalized" : "**Fixed Nickname/OT for")} {(Species)clone.Species}** (found ad: {detectedAd})! Now confirm the trade!");
-        Log($"{(!laInit.Valid ? "Legalized" : "Fixed Nickname/OT for")} {(Species)clone.Species}!");
+        Log($"{(!laInit.Valid ? "Legalized" : "Fixed Nickname/OT for")} {LanguageHelper.GetLocalizedSpeciesLog(clone)}!");
+        TradeProgressChanged?.Invoke(84);
 
         await SetBoxPokemonAbsolute(BoxStartOffset, clone, token, sav).ConfigureAwait(false);
         poke.SendNotification(this, "Now confirm the trade!");
@@ -724,7 +769,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         bool changed = pk2 == null || !comp.SequenceEqual(lastOffered) || clone.Species != pk2.Species || offered.OriginalTrainerName != pk2.OriginalTrainerName;
         if (changed)
         {
-            Log($"{name} changed the shown Pokémon ({(Species)clone.Species}){(pk2 != null ? $" to {(Species)pk2.Species}" : "")}");
+            Log($"{name} changed the shown Pokémon ({LanguageHelper.GetLocalizedSpeciesLog(clone)}){(pk2 != null ? $" to {LanguageHelper.GetLocalizedSpeciesLog(pk2)}" : "")}");
             poke.SendNotification(this, "**Send away the originally shown Pokémon, please!**");
 
             bool verify = await ReadUntilChanged(LinkTradePokemonOffset, comp, 10_000, 0_200, false, true, token).ConfigureAwait(false);
@@ -740,6 +785,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         {
             poke.SendNotification(this, "Pokémon was swapped and not changed back. Exiting trade.");
             Log("Trading partner did not wish to send away their ad-mon.");
+            TradeProgressChanged?.Invoke(0);
+
             return (offered, PokeTradeResult.TrainerTooSlow);
         }
 
@@ -841,14 +888,6 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
 
     private async Task<PokeTradeResult> PerformLinkCodeTrade(SAV8BS sav, PokeTradeDetail<PB8> poke, CancellationToken token)
     {
-        // Check if trade was canceled by user
-        if (poke.IsCanceled)
-        {
-            Log($"Trade for {poke.Trainer.TrainerName} was canceled by user.");
-            poke.TradeCanceled(this, PokeTradeResult.UserCanceled);
-            return PokeTradeResult.UserCanceled;
-        }
-
         if (token.IsCancellationRequested) return PokeTradeResult.RoutineCancel;
 
         // Update Barrier Settings
@@ -901,6 +940,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
             }
         }
         Log("Found a user talking to us!");
+        TradeProgressChanged?.Invoke(56);
 
         // Keep pressing A until TargetTranerParam (sic) is loaded (when we hit the box).
         while (!await IsPartnerParamLoaded(token).ConfigureAwait(false) && waitPartner > 0)
@@ -921,6 +961,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
             }
         }
         Log("Entering the box...");
+        TradeProgressChanged?.Invoke(76);
+
 
         // Still going through dialog and box opening.
         await Task.Delay(3_000, token).ConfigureAwait(false);
@@ -934,30 +976,27 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         }
 
         var tradePartner = await GetTradePartnerInfo(token).ConfigureAwait(false);
-        if (tradePartner is null)
-        {
-            await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false);
-            return PokeTradeResult.TrainerTooSlow;
-        }
-        var trainerNID = GetFakeNID(tradePartner.TrainerName, tradePartner.TrainerID);
-        RecordUtil<PokeTradeBotBS>.Record($"Initiating\t{trainerNID:X16}\t{tradePartner.TrainerName}\t{poke.Trainer.TrainerName}\t{poke.Trainer.ID}\t{poke.ID}\t{toSend.EncryptionConstant:X8}");
-        Log($"Found Link Trade partner: {tradePartner.TrainerName} (Gender: {tradePartner.GenderString})-{tradePartner.TID7} (ID: {trainerNID})");
-        poke.SendNotification(this, $"Found Link Trade partner: {tradePartner.TrainerName}. **TID**: {tradePartner.TID7} **SID**: {tradePartner.SID7}. Waiting for a Pokémon...");
+        var trainerNID = GetFakeNID(tradePartner?.TrainerName ?? string.Empty, tradePartner?.TrainerID ?? 0);
+        RecordUtil<PokeTradeBotBS>.Record($"Initiating\t{trainerNID:X16}\t{tradePartner?.TrainerName ?? "Unknown"}\t{poke.Trainer.TrainerName}\t{poke.Trainer.ID}\t{poke.ID}\t{toSend.EncryptionConstant:X8}");
+        Log($"Found Link Trade partner: {tradePartner?.TrainerName ?? "Unknown"}-{tradePartner?.TID7 ?? "0"} (ID: {trainerNID})");
+        TradeProgressChanged?.Invoke(63);
+
+        poke.SendNotification(this, $"Found Link Trade partner: {tradePartner?.TrainerName ?? "Unknown"}. **TID**: {tradePartner?.TID7 ?? "0"} **SID**: {tradePartner?.SID7 ?? "0"}. Waiting for a Pokémon...");
 
         var tradeCodeStorage = new TradeCodeStorage();
         var existingTradeDetails = tradeCodeStorage.GetTradeDetails(poke.Trainer.ID);
 
-        string ot = tradePartner.TrainerName;
-        int tid = int.Parse(tradePartner.TID7);
-        int sid = int.Parse(tradePartner.SID7);
+        string ot = tradePartner?.TrainerName ?? string.Empty;
+        int tid = int.Parse(tradePartner?.TID7 ?? "0");
+        int sid = int.Parse(tradePartner?.SID7 ?? "0");
 
         if (existingTradeDetails != null)
         {
-            bool shouldUpdateOT = existingTradeDetails.OT != tradePartner.TrainerName;
+            bool shouldUpdateOT = existingTradeDetails.OT != tradePartner?.TrainerName;
             bool shouldUpdateTID = existingTradeDetails.TID != tid;
             bool shouldUpdateSID = existingTradeDetails.SID != sid;
 
-            ot = shouldUpdateOT ? tradePartner.TrainerName : existingTradeDetails.OT ?? tradePartner.TrainerName;
+            ot = shouldUpdateOT ? (tradePartner?.TrainerName ?? string.Empty) : (existingTradeDetails.OT ?? (tradePartner?.TrainerName ?? string.Empty));
             tid = shouldUpdateTID ? tid : existingTradeDetails.TID;
             sid = shouldUpdateSID ? sid : existingTradeDetails.SID;
         }
@@ -967,13 +1006,13 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
             tradeCodeStorage.UpdateTradeDetails(poke.Trainer.ID, ot, tid, sid);
         }
 
-        var partnerCheck = CheckPartnerReputation(this, poke, trainerNID, tradePartner.TrainerName, AbuseSettings, token);
+        var partnerCheck = await CheckPartnerReputation(this, poke, trainerNID, tradePartner?.TrainerName ?? string.Empty, AbuseSettings, token);
         if (partnerCheck != PokeTradeResult.Success)
             return PokeTradeResult.SuspiciousActivity;
 
         if (Hub.Config.Legality.UseTradePartnerInfo && !poke.IgnoreAutoOT)
         {
-            toSend = await ApplyAutoOT(toSend, sav, tradePartner.TrainerName, (uint)tid, (uint)sid, tradePartner.Gender, token);
+            toSend = await ApplyAutoOT(toSend, sav, tradePartner?.TrainerName ?? string.Empty, (uint)tid, (uint)sid, token);
         }
 
         await Task.Delay(2_000, token).ConfigureAwait(false);
@@ -1004,7 +1043,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         // Add Special Request handling here
         SpecialTradeType itemReq = SpecialTradeType.None;
         if (poke.Type == PokeTradeType.Seed)
-            itemReq = CheckItemRequest(ref offered, this, poke, tradePartner.TrainerName, sav);
+            itemReq = CheckItemRequest(ref offered, this, poke, tradePartner?.TrainerName ?? string.Empty, sav);
         if (itemReq == SpecialTradeType.FailReturn)
             return PokeTradeResult.IllegalTrade;
 
@@ -1012,11 +1051,13 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         {
             // Immediately exit, we aren't trading anything.
             poke.SendNotification(this, "No held item or valid request! Cancelling this trade.");
+            TradeProgressChanged?.Invoke(0);
+
             await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false);
             return PokeTradeResult.TrainerRequestBad;
         }
 
-        var trainer = new PartnerDataHolder(0, tradePartner.TrainerName, tradePartner.TID7);
+        var trainer = new PartnerDataHolder(0, tradePartner?.TrainerName ?? string.Empty, tradePartner?.TID7 ?? "0");
         PokeTradeResult update;
         (toSend, update) = await GetEntityToSend(sav, poke, offered, toSend, trainer, poke.Type == PokeTradeType.Seed ? itemReq : null, token).ConfigureAwait(false);
         if (update != PokeTradeResult.Success)
@@ -1048,11 +1089,18 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         if (SearchUtil.HashByDetails(received) == SearchUtil.HashByDetails(toSend) && received.Checksum == toSend.Checksum)
         {
             Log("User did not complete the trade.");
+            TradeProgressChanged?.Invoke(0);
+
             return PokeTradeResult.TrainerTooSlow;
         }
 
         // As long as we got rid of our inject in b1s1, assume the trade went through.
-        Log("User completed the trade.");
+        string otName = poke.Trainer.TrainerName;
+        var receivedSpeciesStr = LanguageHelper.GetLocalizedSpeciesLog(received);
+        var sentSpeciesStr = LanguageHelper.GetLocalizedSpeciesLog(toSend);
+        Log($"Trade completed. Received {receivedSpeciesStr} from {otName} in exchange for {sentSpeciesStr}.");
+        TradeProgressChanged?.Invoke(100);
+
         poke.TradeFinished(this, received);
 
         // Only log if we completed the trade.
@@ -1062,6 +1110,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         await Task.Delay(12_000, token).ConfigureAwait(false);
 
         Log("Trying to get out of the Union Room.");
+        TradeProgressChanged?.Invoke(100);
         // Now get out of the Union Room.
         if (!await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false))
             return PokeTradeResult.RecoverReturnOverworld;
@@ -1140,7 +1189,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
                 for (int j = 0; j < allReceived.Count; j++)
                 {
                     var pokemon = allReceived[j];
-                    var speciesName = SpeciesName.GetSpeciesName(pokemon.Species, 2);
+                    var speciesName = LanguageHelper.GetLocalizedSpeciesLog(pokemon);
                     Log($"  - Returning: {speciesName} (Checksum: {pokemon.Checksum:X8})");
 
                     // Send the Pokemon directly to the notifier
@@ -1206,6 +1255,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
                 // FIRST: Prepare the Pokemon BEFORE allowing user to offer
                 poke.SendNotification(this, $"Trade {completedTrades} completed! **DO NOT OFFER YET** - Preparing your next Pokémon ({completedTrades + 1}/{totalBatchTrades})...");
 
+
                 // Wait for trade animation to fully complete
                 await Task.Delay(5_000, token).ConfigureAwait(false);
 
@@ -1214,7 +1264,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
                 {
                     if (Hub.Config.Legality.UseTradePartnerInfo && !poke.IgnoreAutoOT && cachedTradePartner != null)
                     {
-                        toSend = await ApplyAutoOT(toSend, sav, cachedTradePartner.TrainerName, cachedTID, cachedSID, cachedTradePartner.Gender, token);
+                        toSend = await ApplyAutoOT(toSend, sav, cachedTradePartner.TrainerName, cachedTID, cachedSID, token);
                         tradesToProcess[currentTradeIndex] = toSend; // Update the list
                     }
                     await SetBoxPokemonAbsolute(BoxStartOffset, toSend, token, sav).ConfigureAwait(false);
@@ -1225,6 +1275,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
 
                 // NOW tell the user they can offer
                 poke.SendNotification(this, $"**Ready!** You can now offer your Pokémon for trade {currentTradeIndex + 1}/{totalBatchTrades}.");
+
 
                 // Additional delay to ensure we're ready to detect offers
                 await Task.Delay(2_000, token).ConfigureAwait(false);
@@ -1241,12 +1292,15 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
                 if (--waitPartner <= 0)
                 {
                     poke.SendNotification(this, $"No trainer found after trade {completedTrades + 1}/{totalBatchTrades}. Canceling the remaining trades.");
+                    TradeProgressChanged?.Invoke(0);
+
                     SendCollectedPokemonAndCleanup();
                     await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false);
                     return PokeTradeResult.NoTrainerFound;
                 }
             }
             Log("Found a user talking to us!");
+
 
             while (!await IsPartnerParamLoaded(token).ConfigureAwait(false) && waitPartner > 0)
             {
@@ -1264,6 +1318,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
                 if (--waitPartner <= 0)
                 {
                     poke.SendNotification(this, $"Trade partner too slow after trade {completedTrades + 1}/{totalBatchTrades}. Canceling the remaining trades.");
+                    TradeProgressChanged?.Invoke(0);
+
                     SendCollectedPokemonAndCleanup();
                     await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false);
                     return PokeTradeResult.TrainerTooSlow;
@@ -1271,48 +1327,44 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
             }
 
             Log("Entering the box...");
+
             await Task.Delay(3_000, token).ConfigureAwait(false);
 
             if (!await IsPartnerParamLoaded(token).ConfigureAwait(false))
             {
                 poke.SendNotification(this, $"Trade partner too slow after trade {completedTrades + 1}/{totalBatchTrades}. Canceling the remaining trades.");
+                TradeProgressChanged?.Invoke(0);
+
                 SendCollectedPokemonAndCleanup();
                 await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false);
                 return PokeTradeResult.TrainerTooSlow;
             }
 
             var tradePartner = await GetTradePartnerInfo(token).ConfigureAwait(false);
-            if (tradePartner is null)
-            {
-                poke.SendNotification(this, $"Trade partner info not available after trade {completedTrades + 1}/{totalBatchTrades}. Canceling the remaining trades.");
-                SendCollectedPokemonAndCleanup();
-                await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false);
-                return PokeTradeResult.TrainerTooSlow;
-            }
-            var trainerNID = GetFakeNID(tradePartner.TrainerName, tradePartner.TrainerID);
+            var trainerNID = GetFakeNID(tradePartner?.TrainerName ?? string.Empty, tradePartner.TrainerID);
 
             // Cache trade partner info from first trade
             if (currentTradeIndex == 0)
             {
                 cachedTradePartner = tradePartner;
-                cachedTID = (uint)int.Parse(tradePartner.TID7);
-                cachedSID = (uint)int.Parse(tradePartner.SID7);
+                cachedTID = (uint)int.Parse(tradePartner?.TID7 ?? "0");
+                cachedSID = (uint)int.Parse(tradePartner?.SID7 ?? "0");
             }
 
             var tradeCodeStorage = new TradeCodeStorage();
             var existingTradeDetails = tradeCodeStorage.GetTradeDetails(poke.Trainer.ID);
 
-            string ot = tradePartner.TrainerName;
-            int tid = int.Parse(tradePartner.TID7);
-            int sid = int.Parse(tradePartner.SID7);
+            string ot = tradePartner?.TrainerName ?? string.Empty;
+            int tid = int.Parse(tradePartner?.TID7 ?? "0");
+            int sid = int.Parse(tradePartner?.SID7 ?? "0");
 
             if (existingTradeDetails != null)
             {
-                bool shouldUpdateOT = existingTradeDetails.OT != tradePartner.TrainerName;
+                bool shouldUpdateOT = existingTradeDetails.OT != tradePartner?.TrainerName;
                 bool shouldUpdateTID = existingTradeDetails.TID != tid;
                 bool shouldUpdateSID = existingTradeDetails.SID != sid;
 
-                ot = shouldUpdateOT ? tradePartner.TrainerName : existingTradeDetails.OT ?? tradePartner.TrainerName;
+                ot = shouldUpdateOT ? (tradePartner?.TrainerName ?? string.Empty) : (existingTradeDetails.OT ?? (tradePartner?.TrainerName ?? string.Empty));
                 tid = shouldUpdateTID ? tid : existingTradeDetails.TID;
                 sid = shouldUpdateSID ? sid : existingTradeDetails.SID;
             }
@@ -1322,21 +1374,25 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
                 tradeCodeStorage.UpdateTradeDetails(poke.Trainer.ID, ot, tid, sid);
             }
 
-            var partnerCheck = CheckPartnerReputation(this, poke, trainerNID, tradePartner.TrainerName, AbuseSettings, token);
+            var partnerCheck = await CheckPartnerReputation(this, poke, trainerNID, tradePartner?.TrainerName ?? string.Empty, AbuseSettings, token);
             if (partnerCheck != PokeTradeResult.Success)
             {
                 poke.SendNotification(this, $"Suspicious activity detected after trade {completedTrades + 1}/{totalBatchTrades}. Canceling the remaining trades.");
+                TradeProgressChanged?.Invoke(0);
+
                 SendCollectedPokemonAndCleanup();
                 await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false);
                 return PokeTradeResult.SuspiciousActivity;
             }
 
-            Log($"Found Link Trade partner: {tradePartner.TrainerName} (Gender: {tradePartner.GenderString}) -{tradePartner.TID7} (ID: {trainerNID})");
+            Log($"Found Link Trade partner: {tradePartner?.TrainerName ?? "Unknown"}-{tradePartner?.TID7 ?? "0"} (ID: {trainerNID})");
+            TradeProgressChanged?.Invoke(63);
+
 
             // First trade only - send partner found notification
             if (currentTradeIndex == 0)
             {
-                poke.SendNotification(this, $"Found Link Trade partner: {tradePartner.TrainerName}. **TID**: {tradePartner.TID7} **SID**: {tradePartner.SID7}");
+                poke.SendNotification(this, $"Found Link Trade partner: {tradePartner?.TrainerName ?? "Unknown"}. **TID**: {tradePartner?.TID7 ?? "0"} **SID**: {tradePartner?.SID7 ?? "0"}");
             }
 
             // Wait for user to offer a Pokemon
@@ -1348,7 +1404,7 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
             // Apply AutoOT for first trade if needed (already done for subsequent trades above)
             if (currentTradeIndex == 0 && Hub.Config.Legality.UseTradePartnerInfo && !poke.IgnoreAutoOT)
             {
-                toSend = await ApplyAutoOT(toSend, sav, tradePartner.TrainerName, (uint)tid, (uint)sid, tradePartner.Gender, token);
+                toSend = await ApplyAutoOT(toSend, sav, tradePartner?.TrainerName ?? string.Empty, (uint)tid, (uint)sid, token);
                 poke.TradeData = toSend;
                 if (toSend.Species != 0)
                     await SetBoxPokemonAbsolute(BoxStartOffset, toSend, token, sav).ConfigureAwait(false);
@@ -1362,27 +1418,35 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
             if (offered == null || offered.Species == 0 || !offered.ChecksumValid)
             {
                 poke.SendNotification(this, $"Invalid Pokémon offered after trade {completedTrades + 1}/{totalBatchTrades}. Canceling the remaining trades.");
+                TradeProgressChanged?.Invoke(0);
+
                 SendCollectedPokemonAndCleanup();
                 await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false);
                 return PokeTradeResult.TrainerTooSlow;
             }
 
-            var trainer = new PartnerDataHolder(0, tradePartner.TrainerName, tradePartner.TID7);
+            var trainer = new PartnerDataHolder(0, tradePartner?.TrainerName ?? string.Empty, tradePartner?.TID7 ?? "0");
             PokeTradeResult update;
             (toSend, update) = await GetEntityToSend(sav, poke, offered, toSend, trainer, null, token).ConfigureAwait(false);
             if (update != PokeTradeResult.Success)
             {
                 poke.SendNotification(this, $"Update check failed after trade {completedTrades + 1}/{totalBatchTrades}. Canceling the remaining trades.");
+                TradeProgressChanged?.Invoke(0);
+
                 SendCollectedPokemonAndCleanup();
                 await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false);
                 return update;
             }
 
             Log($"Confirming trade {currentTradeIndex + 1}/{totalBatchTrades}.");
+            TradeProgressChanged?.Invoke(92);
+
             var tradeResult = await ConfirmAndStartTrading(poke, token).ConfigureAwait(false);
             if (tradeResult != PokeTradeResult.Success)
             {
                 poke.SendNotification(this, $"Trade confirmation failed after trade {completedTrades + 1}/{totalBatchTrades}. Canceling the remaining trades.");
+                TradeProgressChanged?.Invoke(0);
+
                 SendCollectedPokemonAndCleanup();
                 await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false);
                 return tradeResult;
@@ -1392,24 +1456,30 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
             if (SearchUtil.HashByDetails(received) == SearchUtil.HashByDetails(toSend) && received.Checksum == toSend.Checksum)
             {
                 poke.SendNotification(this, $"Partner did not complete trade {completedTrades + 1}/{totalBatchTrades}. Canceling the remaining trades.");
+                TradeProgressChanged?.Invoke(0);
+
                 SendCollectedPokemonAndCleanup();
                 await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false);
                 return PokeTradeResult.TrainerTooSlow;
             }
 
             Log("User completed the trade.");
+
             UpdateCountsAndExport(poke, received, toSend);
-            LogSuccessfulTrades(poke, trainerNID, tradePartner.TrainerName);
+            LogSuccessfulTrades(poke, trainerNID, tradePartner?.TrainerName ?? "Unknown");
 
             BatchTracker.AddReceivedPokemon(originalTrainerID, received);
             completedTrades = currentTradeIndex + 1;
-            Log($"Added received Pokémon {received.Species} (Checksum: {received.Checksum:X8}) to batch tracker for trainer {originalTrainerID} (Trade {completedTrades}/{totalBatchTrades})");
+            var speciesName = LanguageHelper.GetLocalizedSpeciesLog(received);
+            Log($"Added received Pokémon {speciesName} (Checksum: {received.Checksum:X8}) to batch tracker for trainer {originalTrainerID} (Trade {completedTrades}/{totalBatchTrades})");
 
             if (completedTrades == totalBatchTrades)
             {
                 // Get all collected Pokemon before cleaning anything up
                 var allReceived = BatchTracker.GetReceivedPokemon(originalTrainerID);
                 Log($"Batch trades complete. Found {allReceived.Count} Pokémon stored for trainer {originalTrainerID}");
+                TradeProgressChanged?.Invoke(100);
+
 
                 // First send notification that trades are complete
                 poke.SendNotification(this, "All batch trades completed! Thank you for trading!");
@@ -1423,7 +1493,6 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
                     for (int j = 0; j < allReceived.Count; j++)
                     {
                         var pokemon = allReceived[j];
-                        var speciesName = SpeciesName.GetSpeciesName(pokemon.Species, 2);
                         Log($"  - Returning: {speciesName} (Checksum: {pokemon.Checksum:X8})");
 
                         // Send the Pokemon directly to the notifier
@@ -1484,6 +1553,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
             else
             {
                 detail.SendNotification(this, $"Batch trade failed: {result}");
+                TradeProgressChanged?.Invoke(0);
+
                 detail.TradeCanceled(this, result);
                 await EnsureOutsideOfUnionRoom(token).ConfigureAwait(false);
             }
@@ -1553,6 +1624,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         }
 
         Log($"Ended Dump loop after processing {ctr} Pokémon.");
+        TradeProgressChanged?.Invoke(100);
+
         if (ctr == 0)
             return PokeTradeResult.TrainerTooSlow;
 
@@ -1570,6 +1643,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         await PressAndHold(DUP, 2_000, 0_250, token).ConfigureAwait(false);
         // Y-button trades always put us in a place where we can open the call menu without having to move.
         Log("Attempting to open the Y menu.");
+        TradeProgressChanged?.Invoke(49);
+
         await Click(Y, 1_000, token).ConfigureAwait(false);
         await Click(A, 0_400, token).ConfigureAwait(false);
         await Click(DDOWN, 0_400, token).ConfigureAwait(false);
@@ -1666,6 +1741,8 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
             // Updates the assets.
             Hub.Config.Stream.IdleAssets(this);
             Log("Nothing to check, waiting for new users...");
+            TradeProgressChanged?.Invoke(0);
+
         }
 
         const int interval = 10;

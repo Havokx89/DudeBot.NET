@@ -99,6 +99,7 @@ public sealed class FileNamer : IFileNamer<PKM>
         if (pk.BDSP) return "BBDSP";
         if (pk.LA) return "PLA";
         if (pk.SV) return "SV";
+        if (pk.ZA) return "ZA";
         return "Unknown";
     }
 }

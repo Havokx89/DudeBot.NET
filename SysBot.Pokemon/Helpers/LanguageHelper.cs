@@ -6,6 +6,54 @@ namespace SysBot.Pokemon.Helpers;
 
 public static class LanguageHelper
 {
+    public static string GetLocalizedSpeciesName(int speciesIndex, LanguageID lang)
+    {
+        try
+        {
+            var strings = GameInfo.GetStrings("lang");
+            if (strings?.Species == null || speciesIndex < 0 || speciesIndex >= strings.Species.Count)
+                return "???";
+
+            return strings.Species[speciesIndex];
+        }
+        catch
+        {
+            return "???";
+        }
+    }
+
+    public static string GetLocalizedSpeciesLog(PKM pkm)
+    {
+        if (pkm == null)
+            return "(Invalid Pokémon)";
+
+        var langID = (LanguageID)pkm.Language;
+        var langName = GetLanguageName(langID);
+
+        string localizedName = TryGetSpeciesName(pkm.Species, langID);
+        string englishName = TryGetSpeciesName(pkm.Species, LanguageID.English);
+
+        if (langID == LanguageID.English || localizedName == englishName)
+            return englishName;
+
+        return $"{localizedName} ({englishName}, {langName})";
+    }
+
+    private static string TryGetSpeciesName(int speciesIndex, LanguageID lang)
+    {
+        try
+        {
+            var strings = GameInfo.GetStrings("lang");
+            if (strings?.Species == null || speciesIndex < 0 || speciesIndex >= strings.Species.Count)
+                return "???";
+
+            return strings.Species[speciesIndex];
+        }
+        catch
+        {
+            return "???";
+        }
+    }
     public static byte GetFinalLanguage(string content, ShowdownSet? set, byte configLanguage, Func<string, byte> detectLanguageFunc)
     {
         // Check if user explicitly specified a language in the showdown set
@@ -61,13 +109,31 @@ public static class LanguageHelper
     {
         return typeof(T) switch
         {
-            Type t when t == typeof(PK8) => TrainerSettings.GetSavedTrainerData(GameVersion.SWSH, 8, lang: language),
-            Type t when t == typeof(PB8) => TrainerSettings.GetSavedTrainerData(GameVersion.BDSP, 8, lang: language),
-            Type t when t == typeof(PA8) => TrainerSettings.GetSavedTrainerData(GameVersion.PLA, 8, lang: language),
-            Type t when t == typeof(PK9) => TrainerSettings.GetSavedTrainerData(GameVersion.SV, 9, lang: language),
-            Type t when t == typeof(PA9) => TrainerSettings.GetSavedTrainerData(GameVersion.ZA, 9, lang: language),
-            Type t when t == typeof(PB7) => TrainerSettings.GetSavedTrainerData(GameVersion.GE, 7, lang: language),
+            Type t when t == typeof(PK8) => TrainerSettings.GetSavedTrainerData((byte)8, GameVersion.SWSH, lang: language),
+            Type t when t == typeof(PB8) => TrainerSettings.GetSavedTrainerData((byte)8, GameVersion.BDSP, lang: language),
+            Type t when t == typeof(PA8) => TrainerSettings.GetSavedTrainerData((byte)8, GameVersion.PLA, lang: language),
+            Type t when t == typeof(PK9) => TrainerSettings.GetSavedTrainerData((byte)9, GameVersion.SV, lang: language),
+            Type t when t == typeof(PA9) => TrainerSettings.GetSavedTrainerData((byte)9, GameVersion.ZA, lang: language),
+            Type t when t == typeof(PB7) => TrainerSettings.GetSavedTrainerData((byte)7, GameVersion.GE, lang: language),
             _ => throw new ArgumentException("Type does not have a recognized trainer fetch.", typeof(T).Name)
+        };
+    }
+
+    public static string GetLanguageName(LanguageID lang)
+    {
+        return lang switch
+        {
+            LanguageID.Japanese => "Japanese",
+            LanguageID.English => "English",
+            LanguageID.French => "French",
+            LanguageID.Italian => "Italian",
+            LanguageID.German => "German",
+            LanguageID.Spanish => "Spanish",
+            LanguageID.SpanishL => "SpanishL",
+            LanguageID.Korean => "Korean",
+            LanguageID.ChineseT => "Chinese (Traditional)",
+            LanguageID.ChineseS => "Chinese (Simplified)",
+            _ => "Unknown"
         };
     }
 }

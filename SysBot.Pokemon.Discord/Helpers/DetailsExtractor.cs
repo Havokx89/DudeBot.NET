@@ -303,7 +303,7 @@ public static class DetailsExtractor<T> where T : PKM, new()
                     formattedMove += !string.IsNullOrWhiteSpace(plusEmoji) ? plusEmoji : " (*+*)";
                 }
             }
-            moveNames.Add($"- {formattedMove}");
+            moveNames.Add($"{formattedMove}");
         }
 
         return moveNames;

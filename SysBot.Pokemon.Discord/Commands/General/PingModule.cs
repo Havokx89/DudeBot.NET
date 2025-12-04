@@ -12,8 +12,8 @@ public class PingModule : ModuleBase<SocketCommandContext>
     {
         var embed = new EmbedBuilder()
             .WithTitle("Ping Response")
-            .WithDescription("Pong! The bot is running smoothly.")
-            .WithImageUrl("https://i.gifer.com/QgxJ.gif")
+            .WithDescription("Pong! Now stop @&#$?&! pinging me.")
+            .WithImageUrl("https://i.imgur.com/W9YmyA6.gif")
             .WithColor(Color.Green)
             .Build();
 

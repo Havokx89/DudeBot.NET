@@ -7,7 +7,6 @@ namespace SysBot.Pokemon;
 public sealed class TradePartnerPLZA(TradePartnerStatusPLZA info)
 {
     public const int MaxByteLengthStringObject = 26;
-
     public int Game { get; } = info.Game;
     public int Gender { get; } = info.Gender;
     public int Language { get; } = info.Language;
