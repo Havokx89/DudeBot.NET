@@ -25,7 +25,7 @@ namespace SysBot.Pokemon.Discord
             var context = GetContext();
             if (context == EntityContext.None || typeof(T).Name == "PB7")
             {
-                await ReplyAsync("Mystery Eggs are not available for Let's Go Pikachu/Eevee as the game does not support breeding.").ConfigureAwait(false);
+                await ReplyAsync("Mystery Eggs are not available as this game does not support breeding.").ConfigureAwait(false);
                 return;
             }
 
@@ -59,7 +59,7 @@ namespace SysBot.Pokemon.Discord
             var context = GetContext();
             if (context == EntityContext.None || typeof(T).Name == "PB7")
             {
-                await ReplyAsync("Mystery Eggs are not available for Let's Go Pikachu/Eevee as the game does not support breeding.").ConfigureAwait(false);
+                await ReplyAsync("Mystery Eggs are not available as this game does not support breeding.").ConfigureAwait(false);
                 return;
             }
 
