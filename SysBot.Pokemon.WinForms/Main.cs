@@ -52,9 +52,9 @@ public sealed partial class Main : Form
 
     private IPokeBotRunner RunningEnvironment { get; set; }
 
-    private ProgramConfig Config { get; set; }
-
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    internal ProgramConfig Config { get; set; } = null!;
+
     public static bool IsUpdating { get; set; } = false;
 
     private bool _isFormLoading = true;
@@ -62,6 +62,7 @@ public sealed partial class Main : Form
 #pragma warning disable CS8618
 
     public Main()
+
 #pragma warning restore CS8618
     {
         InitializeComponent();
@@ -228,7 +229,7 @@ public sealed partial class Main : Form
     private ProgramConfig GetCurrentConfiguration()
     {
 
-        Config.Bots = Bots.ToArray();
+        Config.Bots = [.. Bots];
         return Config;
     }
 
@@ -258,14 +259,38 @@ public sealed partial class Main : Form
 
     private void SaveCurrentConfig()
     {
-        var cfg = GetCurrentConfiguration();
-        var lines = JsonSerializer.Serialize(cfg, ProgramConfigContext.Default.ProgramConfig);
-        File.WriteAllText(Program.ConfigPath, lines);
-    }
+        try
+        {
+            var cfg = GetCurrentConfiguration();
+            var json = JsonSerializer.Serialize(cfg, ProgramConfigContext.Default.ProgramConfig);
 
-    [JsonSerializable(typeof(ProgramConfig))]
-    [JsonSourceGenerationOptions(WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-    public sealed partial class ProgramConfigContext : JsonSerializerContext;
+            // Use atomic write operation to prevent corruption
+            var tempPath = Program.ConfigPath + ".tmp";
+            var backupPath = Program.ConfigPath + ".bak";
+
+            // Write to temporary file first
+            File.WriteAllText(tempPath, json);
+
+            // Create backup of existing config if it exists
+            if (File.Exists(Program.ConfigPath))
+            {
+                File.Copy(Program.ConfigPath, backupPath, true);
+            }
+
+            // Atomic rename operation
+            File.Move(tempPath, Program.ConfigPath, true);
+
+            // Delete backup after successful save
+            if (File.Exists(backupPath))
+            {
+                try { File.Delete(backupPath); } catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            LogUtil.LogError($"Failed to save config: {ex.Message}", "Config");
+        }
+    }
 
     private void CB_Mode_SelectedIndexChanged(object? sender, EventArgs e)
     {

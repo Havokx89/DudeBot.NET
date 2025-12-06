@@ -294,10 +294,6 @@ namespace SysBot.Pokemon.Discord
 
         private static string? GetHiddenAbilityName(ushort species, EntityContext context)
         {
-            // First check PKHeX's breed legality
-            if (!AbilityBreedLegality.IsHiddenPossibleHOME(species))
-                return null;
-
             var personalTable = GetPersonalTable(context);
             if (personalTable == null)
                 return null;

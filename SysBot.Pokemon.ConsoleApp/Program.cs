@@ -26,9 +26,9 @@ public static class Program
 
     private static void Main(string[] args)
     {
-        Console.WriteLine("Starting up...");
+        LogUtil.LogInfo("SysBot", "Starting up...");
         if (args.Length > 1)
-            Console.WriteLine("This program does not support command line arguments.");
+            LogUtil.LogInfo("SysBot", "This program does not support command line arguments.");
 
         if (!File.Exists(ConfigPath))
         {
@@ -45,15 +45,11 @@ public static class Program
         }
         catch (Exception)
         {
-            Console.WriteLine("Unable to start bots with saved config file. Please copy your config from the WinForms project or delete it and reconfigure.");
+            LogUtil.LogInfo("SysBot", "Unable to start bots with saved config file. Please copy your config from the WinForms project or delete it and reconfigure.");
             Console.ReadKey();
         }
     }
 }
-
-[JsonSerializable(typeof(ProgramConfig))]
-[JsonSourceGenerationOptions(WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-public sealed partial class ProgramConfigContext : JsonSerializerContext;
 
 public static class BotContainer
 {
