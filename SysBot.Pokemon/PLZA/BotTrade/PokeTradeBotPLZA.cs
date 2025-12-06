@@ -52,7 +52,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
     /// </summary>
     public bool ShouldWaitAtBarrier { get; private set; }
 
-    #region Lifecycle & Main Loop
+    // Lifecycle & Main Loop
 
     public override Task HardStop()
     {
@@ -128,9 +128,9 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         }
     }
 
-    #endregion
 
-    #region Enums
+
+    // Enums
 
     protected enum TradePartnerWaitResult
     {
@@ -145,9 +145,9 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         VerificationFailedMismatch
     }
 
-    #endregion
 
-    #region Trade Queue Management
+
+    // Trade Queue Management
 
     protected virtual (PokeTradeDetail<PA9>? detail, uint priority) GetTradeData(PokeRoutineType type)
     {
@@ -175,9 +175,9 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         return (null, PokeTradePriorities.TierFree);
     }
 
-    #endregion
 
-    #region Trade Partner Detection
+
+    // Trade Partner Detection
 
     // Upon connecting, their Nintendo ID will instantly update.
     protected virtual async Task<TradePartnerWaitResult> WaitForTradePartner(CancellationToken token)
@@ -226,9 +226,9 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         return TradePartnerWaitResult.Timeout;
     }
 
-    #endregion
 
-    #region AutoOT Features
+
+    // AutoOT Features
 
     private static void ApplyTrainerInfo(PA9 pokemon, TradePartnerStatusPLZA partner)
     {
@@ -344,9 +344,9 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         }
     }
 
-    #endregion
 
-    #region Trade Confirmation
+
+    // Trade Confirmation
 
     private async Task<PokeTradeResult> ConfirmAndStartTrading(PokeTradeDetail<PA9> detail, uint checksumBeforeTrade, CancellationToken token)
     {
@@ -446,9 +446,9 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         return PokeTradeResult.TrainerTooSlow;
     }
 
-    #endregion
 
-    #region Online Connection & Portal
+
+    // Online Connection & Portal
 
     private async Task<bool> ConnectAndEnterPortal(CancellationToken token)
     {
@@ -509,9 +509,9 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         return true;
     }
 
-    #endregion
 
-    #region Trade Queue Processing
+
+    // Trade Queue Processing
 
     private async Task DoNothing(CancellationToken token)
     {
@@ -545,9 +545,9 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         }
     }
 
-    #endregion
 
-    #region Navigation and Recovery
+
+    // Navigation and Recovery
 
     private async Task DisconnectFromTrade(CancellationToken token)
     {
@@ -654,9 +654,9 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         StartFromOverworld = true;
     }
 
-    #endregion
 
-    #region Game State & Data Access
+
+    // Game State & Data Access
 
     private async Task<TradePartnerStatusPLZA> GetTradePartnerFullInfo(CancellationToken token)
     {
@@ -732,9 +732,9 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         return data[0];
     }
 
-    #endregion
 
-    #region Trade Result Handling
+
+    // Trade Result Handling
 
     private void HandleAbortedTrade(PokeTradeDetail<PA9> detail, PokeRoutineType type, uint priority, PokeTradeResult result)
     {
@@ -787,9 +787,9 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         }
     }
 
-    #endregion
 
-    #region Events
+
+    // Events
 
     private void OnConnectionError(Exception ex)
     {
@@ -801,9 +801,9 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         ConnectionSuccess?.Invoke(this, EventArgs.Empty);
     }
 
-    #endregion
 
-    #region Specialized Trade Types
+
+    // Specialized Trade Types
 
     private async Task<PokeTradeResult> PerformBatchTrade(SAV9ZA sav, PokeTradeDetail<PA9> poke, CancellationToken token)
     {
@@ -1219,9 +1219,9 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         return PokeTradeResult.Success;
     }
 
-    #endregion
 
-    #region Core Trade Logic
+
+    // Core Trade Logic
 
     private async Task PerformTrade(SAV9ZA sav, PokeTradeDetail<PA9> detail, PokeRoutineType type, uint priority, CancellationToken token)
     {
@@ -1913,9 +1913,9 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         StartFromOverworld = true;
     }
 
-    #endregion
 
-    #region Multi-Bot Synchronization
+
+    // Multi-Bot Synchronization
 
     /// <summary>
     /// Checks if the barrier needs to get updated to consider this bot.
@@ -1963,7 +1963,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         }
     }
 
-    #region Clone & Dump Features
+    // Clone & Dump Features
 
     private async Task<bool> CheckCloneChangedOffer(CancellationToken token)
     {
@@ -2148,7 +2148,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         return PokeTradeResult.Success;
     }
 
-    #endregion
+
 
     private void WaitAtBarrierIfApplicable(CancellationToken token)
     {
@@ -2187,5 +2187,5 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         return Task.Delay(1_000, token);
     }
 
-    #endregion
+
 }
