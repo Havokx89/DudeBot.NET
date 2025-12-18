@@ -1,5 +1,6 @@
 using PKHeX.Core;
 using PKHeX.Core.AutoMod;
+using SysBot.Base;
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -9,6 +10,14 @@ namespace SysBot.Pokemon.Helpers;
 
 public abstract class TradeExtensions<T> where T : PKM, new()
 {
+    public static readonly ushort[] ExplicitlyBlockedHeldItems =
+    [
+        534, // Red Orb
+        535, // Blue Orb
+
+        // Add other blocked item IDs as needed
+    ];
+
     public static readonly string[] MarkTitle =
     [
         " The Peckish",
@@ -500,6 +509,21 @@ public abstract class TradeExtensions<T> where T : PKM, new()
         var held = pkm.HeldItem;
         if (held <= 0)
             return false;
+
+        // HARD BLOCK: Illegal Items in PLZA (Gen 9a)
+        if (pkm.Context == EntityContext.Gen9a && ExplicitlyBlockedHeldItems.Contains((ushort)held))
+        {
+            const ushort goldBottleCap = 796; // PA9 ID
+            var oldItem = held;
+
+            pkm.HeldItem = goldBottleCap;
+
+            var speciesName = GameInfo.Strings.Species[pkm.Species];
+            var oldItemName = GameInfo.Strings.Item[oldItem];
+            var newItemName = GameInfo.Strings.Item[goldBottleCap];
+
+            Base.LogUtil.LogInfo($"Replaced Illegal item '{oldItemName}' with '{newItemName}' for {speciesName}", "BlockItem");
+        }
 
         // Check if item is not allowed to be held in this game context
         if (!ItemRestrictions.IsHeldItemAllowed(held, pkm.Context))

@@ -430,8 +430,21 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
             await Helpers<T>.ReplyAndDeleteAsync(Context, $"Sorry, the item you entered wasn't recognized.", 2);
             return;
         }
+        if (pkm.HeldItem == 535 || pkm.HeldItem == 534) //Blue and Red Orbs
+        {
+            const ushort goldBottleCap = 796; // PA9 ID
+            var oldItem = pkm.HeldItem;
 
-       if (TradeRestrictions.IsUntradableHeld(pkm.Context, pkm.HeldItem))
+            pkm.HeldItem = goldBottleCap;
+
+            var speciesName = GameInfo.Strings.Species[pkm.Species];
+            var oldItemName = GameInfo.Strings.Item[oldItem];
+            var newItemName = GameInfo.Strings.Item[goldBottleCap];
+
+            Base.LogUtil.LogInfo($"Replaced illegal item '{oldItemName}' with '{newItemName}' for {speciesName}", "BlockItem");
+        }
+
+        if (TradeRestrictions.IsUntradableHeld(pkm.Context, pkm.HeldItem))
         {
             await Helpers<T>.ReplyAndDeleteAsync(Context, $"Sorry, the item you entered can't be traded.", 2);
             return;
