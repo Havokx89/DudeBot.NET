@@ -28,6 +28,7 @@ namespace SysBot.Pokemon.Discord.Helpers
             { "Game", "Version" },
             { "Hypertrain", "HyperTrainFlags" },
             { "Moves", "Moves" },
+            { "Plus Moves", "PlusMoves" },
             { "Relearn Moves", "RelearnMoves" },
             { "Met Level", "MetLevel" },
             { "Ribbons", "Ribbons" },
@@ -53,6 +54,7 @@ namespace SysBot.Pokemon.Discord.Helpers
             { "MetLocation", ProcessMetLocation },
             { "HyperTrainFlags", ProcessHyperTrainFlags },
             { "Moves", ProcessMoves },
+            { "PlusMoves", ProcessPlusMoves },
             { "RelearnMoves", ProcessRelearnMoves },
             { "Ribbons", ProcessRibbons },
             { "Mark", ProcessMark },
@@ -210,6 +212,18 @@ namespace SysBot.Pokemon.Discord.Helpers
             val.Equals("Random", StringComparison.OrdinalIgnoreCase)
                 ? ".Moves=$suggest"
                 : $".Moves={val}";
+
+        // .PlusMoves= → Plus Moves:
+        // Only accepted option is "All" all others are ignored and default to only setting level up Plus Moves. 
+        private static string ProcessPlusMoves(string value)
+        {
+            // trim and normalize spacing
+            value = value.Trim();
+
+            if (!value.Equals("All", StringComparison.OrdinalIgnoreCase))
+                return ".PlusMoves=$Suggest";
+            return $".RelearnMoves=$SuggestAll";
+        }
 
         // .RelearnMoves= → Relearn Moves:
         // Only accepted options are "All" or "None"
