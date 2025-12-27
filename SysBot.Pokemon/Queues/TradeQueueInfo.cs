@@ -1,3 +1,4 @@
+using Discord;
 using PKHeX.Core;
 using SysBot.Base;
 using SysBot.Pokemon.Helpers;
@@ -209,7 +210,7 @@ public sealed record TradeQueueInfo<T>(PokeTradeHub<T> Hub)
     {
         lock (_sync)
         {
-            LogUtil.LogInfo($"Removing {detail.Trade.Trainer.TrainerName}", nameof(TradeQueueInfo<T>));
+            LogUtil.LogInfo($"Removing: Discord ID - Username: {detail.UserID} - {detail.Trade.Trainer.TrainerName}", nameof(TradeQueueInfo<T>));
             return UsersInQueue.Remove(detail);
         }
     }
