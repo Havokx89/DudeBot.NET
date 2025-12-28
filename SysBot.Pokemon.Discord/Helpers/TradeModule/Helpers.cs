@@ -124,8 +124,6 @@ public static class Helpers<T> where T : PKM, new()
 
     public static Task<ProcessedPokemonResult<T>> ProcessShowdownSetAsync(string content, bool ignoreAutoOT = false)
     {
-        content = BatchNormalizer.NormalizeBatchCommands(content);
-        content = ReusableActions.StripCodeBlock(content);
         bool isEgg = TradeExtensions<T>.IsEggCheck(content);
 
         if (!ShowdownParsing.TryParseAnyLanguage(content, out ShowdownSet? set) || set == null || set.Species == 0)
@@ -169,13 +167,16 @@ public static class Helpers<T> where T : PKM, new()
         // Generate egg or normal pokemon based on isEgg flag
         if (isEgg)
         {
-            // Use ALM's GenerateEgg method for eggs
-            pkm = sav.GenerateEgg(template, out var eggResult);
+            // Create a proper RegenTemplate from the ShowdownSet
+            var regenTemplate = new RegenTemplate(set);
+
+            // Generate egg using ALM
+            pkm = sav.GenerateEgg(regenTemplate, out var eggResult);
             result = eggResult.ToString();
         }
         else
         {
-            // Use normal generation for non-eggs
+            // Use normal template for regular Pokémon
             pkm = sav.GetLegal(template, out result);
         }
 
@@ -227,17 +228,15 @@ public static class Helpers<T> where T : PKM, new()
         // Final preparation
         PrepareForTrade(pk, set, finalLanguage);
 
-        // Check for spam names
-       
-            if (TradeExtensions<T>.HasAdName(pk, out string ad))
+      
+        if (TradeExtensions<T>.HasAdName(pk, out string ad))
+        {
+            return Task.FromResult(new ProcessedPokemonResult<T>
             {
-                return Task.FromResult(new ProcessedPokemonResult<T>
-                {
-                    Error = "Detected Adname in the Pokémon's name or trainer name, which is not allowed.",
-                    ShowdownSet = set
-                });
-            }
-        
+                Error = "Detected Adname in the Pokémon's name or trainer name, which is not allowed.",
+                ShowdownSet = set
+            });
+        }
 
         // For SWSH (PK8), GO Pokemon can have AutoOT applied, so don't mark them as non-native
         la = new LegalityAnalysis(pk);
@@ -298,11 +297,11 @@ public static class Helpers<T> where T : PKM, new()
 
     public static async Task SendTradeErrorEmbedAsync(SocketCommandContext context, ProcessedPokemonResult<T> result)
     {
-         var spec = result.ShowdownSet != null && result.ShowdownSet.Species > 0
+        var spec = result.ShowdownSet != null && result.ShowdownSet.Species > 0
             ? GameInfo.Strings.Species[result.ShowdownSet.Species]
             : "Unknown";
 
-         var embedBuilder = new EmbedBuilder()
+        var embedBuilder = new EmbedBuilder()
             .WithTitle("Trade Creation Failed.")
             .WithColor(Color.Red)
             .AddField("Status", $"Failed to create {spec}.")
@@ -389,10 +388,21 @@ public static class Helpers<T> where T : PKM, new()
         return (filter, page);
     }
 
-    public static async Task AddTradeToQueueAsync(SocketCommandContext context, int code, string trainerName, T? pk, RequestSignificance sig,
-        SocketUser usr, bool isBatchTrade = false, int batchTradeNumber = 1, int totalBatchTrades = 1,
-        bool isHiddenTrade = false, bool isMysteryEgg = false, List<Pictocodes>? lgcode = null,
-        PokeTradeType tradeType = PokeTradeType.Specific, bool ignoreAutoOT = false, bool setEdited = false,
+    public static async Task AddTradeToQueueAsync(
+        SocketCommandContext context,
+        int code,
+        string trainerName,
+        T? pk,
+        RequestSignificance sig,
+        SocketUser usr,
+        bool isBatchTrade = false,
+        int batchTradeNumber = 1,
+        int totalBatchTrades = 1,
+        bool isHiddenTrade = false,
+        bool isMysteryEgg = false,
+        List<Pictocodes>? lgcode = null,
+        PokeTradeType tradeType = PokeTradeType.Specific,
+        bool ignoreAutoOT = false, bool setEdited = false,
         bool isNonNative = false)
     {
         lgcode ??= GenerateRandomPictocodes(3);
@@ -409,11 +419,12 @@ public static class Helpers<T> where T : PKM, new()
         if (pk is not null && TradeExtensions<T>.IsItemBlocked(pk))
         {
             var itemName = pk.HeldItem > 0 ? GameInfo.GetStrings("en").Item[pk.HeldItem] : "(none)";
-            var reply = await context.Channel.SendMessageAsync($"Trade blocked: The held item cannot be traded.").ConfigureAwait(false);
+            var reply = await context.Channel.SendMessageAsync($"Trade blocked: The held item '{itemName}' cannot be traded.").ConfigureAwait(false);
             await Task.Delay(6000).ConfigureAwait(false);
             await reply.DeleteAsync().ConfigureAwait(false);
             return;
         }
+
 
         var la = new LegalityAnalysis(pk!);
 

@@ -21,26 +21,38 @@ public class FolderSettings : IDumper
     [Category("Files"), Description("Path to your Events Folder."), DisplayName("ListEvents Folder Path")]
     public string EventsFolder { get; set; } = string.Empty;
 
-    [Category("Files"), Description("Path to your BattleReady Folder."), DisplayName("Battle-Ready Folder Path")]
-    public string BattleReadyPKMFolder { get; set; } = string.Empty;
+    [Category(Files), Description("Directory where your HOME Tracked Pokémon are located."), DisplayName("HOME-Ready Folder")]
+    public string HOMEReadyPKMFolder { get; set; } = string.Empty;
 
     public void CreateDefaults(string path)
     {
         var dump = Path.Combine(path, "dump");
-        Directory.CreateDirectory(dump);
+        if (!Directory.Exists(DumpFolder))
+        {
+            Directory.CreateDirectory(dump);
+        }
         DumpFolder = dump;
         Dump = true;
 
         var distribute = Path.Combine(path, "distribute");
-        Directory.CreateDirectory(distribute);
+        if (!Directory.Exists(DistributeFolder))
+        {
+            Directory.CreateDirectory(distribute);
+        }
         DistributeFolder = distribute;
 
         var events = Path.Combine(path, "events");
-        Directory.CreateDirectory(events);
+        if (!Directory.Exists(EventsFolder))
+        {
+            Directory.CreateDirectory(events);
+        }
         EventsFolder = events;
 
-        var battleReady = Path.Combine(path, "battleready");
-        Directory.CreateDirectory(battleReady);
-        BattleReadyPKMFolder = battleReady;
+        var homeReady = Path.Combine(path, "homeready");
+        if (!Directory.Exists(HOMEReadyPKMFolder))
+        {
+            Directory.CreateDirectory(homeReady);
+        }
+        HOMEReadyPKMFolder = homeReady;
     }
 }

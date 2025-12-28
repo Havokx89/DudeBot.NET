@@ -24,8 +24,8 @@ public static class QueueHelper<T> where T : PKM, new()
     private const uint MaxTradeCode = 9999_9999;
 
     private static readonly Dictionary<int, string> MilestoneImages = new()
- {
-     { 1, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0001.png" },
+    {
+         { 1, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0001.png" },
      { 50, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0050.png" },
      { 100, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0100.png" },
      { 150, "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Medal/0150.png" },
@@ -76,7 +76,6 @@ public static class QueueHelper<T> where T : PKM, new()
             _ => $"Congratulations on reaching {tradeCount} trades! Keep it going!"
         };
     }
-
 
     public static async Task AddToQueueAsync(SocketCommandContext context, int code, string trainer, RequestSignificance sig, T trade, PokeRoutineType routine, PokeTradeType type, SocketUser trader, bool isBatchTrade = false, int batchTradeNumber = 1, int totalBatchTrades = 1, bool isHiddenTrade = false, bool isMysteryEgg = false, List<Pictocodes>? lgcode = null, bool ignoreAutoOT = false, bool setEdited = false, bool isNonNative = false)
     {
@@ -133,7 +132,7 @@ public static class QueueHelper<T> where T : PKM, new()
         int uniqueTradeID = GenerateUniqueTradeID();
 
         var detail = new PokeTradeDetail<T>(pk, trainer, notifier, t, code, sig == RequestSignificance.Favored,
-            lgcode, batchTradeNumber, totalBatchTrades, isMysteryEgg, uniqueTradeID, ignoreAutoOT, setEdited);
+            lgcode, batchTradeNumber, totalBatchTrades, isMysteryEgg, isHiddenTrade, uniqueTradeID, ignoreAutoOT, setEdited);
 
         var trade = new TradeEntry<T>(detail, userID, PokeRoutineType.LinkTrade, name, uniqueTradeID);
         var hub = SysCord<T>.Runner.Hub;
@@ -184,7 +183,7 @@ public static class QueueHelper<T> where T : PKM, new()
         {
             var held = pk.HeldItem;
             var itemName = held > 0 ? PKHeX.Core.GameInfo.GetStrings("en").Item[held] : "(none)";
-            await context.Channel.SendMessageAsync($"{trader.Mention} - Trade blocked: the held item cannot be traded in PLZA.").ConfigureAwait(false);
+            await context.Channel.SendMessageAsync($"{trader.Mention} - Trade blocked: the held item '{itemName}' cannot be traded in PLZA.").ConfigureAwait(false);
             return new TradeQueueResult(false);
         }
 
@@ -198,11 +197,11 @@ public static class QueueHelper<T> where T : PKM, new()
             (string embedImageUrl, DiscordColor embedColor) = await PrepareEmbedDetails(pk);
 
             embedData.EmbedImageUrl = isMysteryEgg ? "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/mysteryegg3.png?raw=true&width=300&height=300" :
-                           type == PokeRoutineType.Dump ? "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Dumping.png?raw=true&width=300&height=300" :
-                           type == PokeRoutineType.Clone ? "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Cloning.png?raw=true&width=300&height=300" :
-                           type == PokeRoutineType.SeedCheck ? "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Seeding.png?raw=true&width=300&height=300" :
-                           type == PokeRoutineType.FixOT ? "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/FixOTing.png?raw=true&width=300&height=300" :
-                           embedImageUrl;
+                type == PokeRoutineType.Dump ? "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Dumping.png?raw=true&width=300&height=300" :
+                type == PokeRoutineType.Clone ? "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Cloning.png?raw=true&width=300&height=300" :
+                type == PokeRoutineType.SeedCheck ? "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/Seeding.png?raw=true&width=300&height=300" :
+                type == PokeRoutineType.FixOT ? "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/FixOTing.png?raw=true&width=300&height=300" :
+                    embedImageUrl;
 
             embedData.HeldItemUrl = string.Empty;
             if (!string.IsNullOrWhiteSpace(embedData.HeldItem))
@@ -215,21 +214,18 @@ public static class QueueHelper<T> where T : PKM, new()
 
             var position = Info.CheckPosition(userID, uniqueTradeID, type);
             var botct = Info.Hub.Bots.Count;
-            var baseEta = Info.Hub.Config.Queues.EstimateDelay(position.Position, botct);
-            string etaMessage = baseEta < 1
-                ? "< 1 minute"
-                : baseEta < 2
-                    ? "1-2 minutes"
-                    : $"{Math.Ceiling(baseEta)} minutes";
-            string footerText = $"Current Position: {(position.Position == -1 ? 1 : position.Position)}";
+            var baseEta = position.Position > botct ? Info.Hub.Config.Queues.EstimateDelay(position.Position, botct) : 0;
+            var etaMessage = $"Wait Estimate: {baseEta:F1} min(s) for trade.";
+            string footerText = $"Current Queue Position: {(position.Position == -1 ? 1 : position.Position)}";
+            string trainerMention = trader.Mention;
+            string userDetailsText = DetailsExtractor<T>.GetUserDetails(totalTradeCount, tradeDetails, trainerMention);
 
-            string userDetailsText = DetailsExtractor<T>.GetUserDetails(totalTradeCount, tradeDetails);
             if (!string.IsNullOrEmpty(userDetailsText))
             {
                 footerText += $"\n{userDetailsText}";
             }
             footerText += $"\nEstimated: {etaMessage} for next trade.";
-            footerText += $"\n✧ DudeBot.NET {DudeBot.Version} ✧";
+            footerText += $"\nDudeBot.NET {DudeBot.Version}";
 
             var embedBuilder = new EmbedBuilder()
                 .WithColor(embedColor)
@@ -300,7 +296,16 @@ public static class QueueHelper<T> where T : PKM, new()
             }
             else
             {
-                var message = $"{trader.Mention} - Added to the LinkTrade queue. Current Position: {position.Position}. Receiving: {embedData.SpeciesName}.\n{etaMessage}";
+                 var message = $"▹SUCCESFULLY ADDED◃\n" +
+                 $"//【USER: ||Owner Access Only||】\n" +
+                 $"//【POSITION: {position.Position}】\n";
+
+                if (embedData.SpeciesName != "---")
+                {
+                    message += $"//【POKÉMON: ||{embedData.SpeciesName}||】\n";
+                }
+
+                message += $"//【ETA: {baseEta:F1} Min(s)】";
                 await context.Channel.SendMessageAsync(message);
             }
         }
@@ -330,15 +335,18 @@ public static class QueueHelper<T> where T : PKM, new()
         int uniqueTradeID = GenerateUniqueTradeID();
 
         var detail = new PokeTradeDetail<T>(firstTrade, trainer_info, notifier, PokeTradeType.Batch, code,
-            sig == RequestSignificance.Favored, null, 1, totalBatchTrades, false, uniqueTradeID)
+            sig == RequestSignificance.Favored, null, 1, totalBatchTrades, false)
         {
             BatchTrades = allTrades
         };
 
-        var trade = new TradeEntry<T>(detail, userID, PokeRoutineType.Batch, name, uniqueTradeID);
+        var trade = new TradeEntry<T>(detail, userID, PokeRoutineType.Batch, name, uniqueTradeID: uniqueTradeID);
         var hub = SysCord<T>.Runner.Hub;
         var Info = hub.Queues.Info;
         var added = Info.AddToTradeQueue(trade, userID, false, sig == RequestSignificance.Owner);
+
+        // Send trade code once
+        await EmbedHelper.SendTradeCodeEmbedAsync(trader, code).ConfigureAwait(false);
 
         // Start queue position updates for Discord notification
         if (added != QueueResultAdd.AlreadyInQueue && added != QueueResultAdd.NotAllowedItem && notifier is DiscordTradeNotifier<T> discordNotifier)
@@ -375,12 +383,9 @@ public static class QueueHelper<T> where T : PKM, new()
         {
             var held = firstTrade.HeldItem;
             var itemName = held > 0 ? PKHeX.Core.GameInfo.GetStrings("en").Item[held] : "(none)";
-            await context.Channel.SendMessageAsync($"{trader.Mention} - Trade blocked: the held item cannot be traded in PLZA.").ConfigureAwait(false);
+            await context.Channel.SendMessageAsync($"{trader.Mention} - Trade blocked: the held item '{itemName}' cannot be traded in PLZA.").ConfigureAwait(false);
             return;
         }
-
-        // Send trade code once
-        await EmbedHelper.SendTradeCodeEmbedAsync(trader, code).ConfigureAwait(false);
 
         var position = Info.CheckPosition(userID, uniqueTradeID, PokeRoutineType.Batch);
         var botct = Info.Hub.Bots.Count;
@@ -431,15 +436,15 @@ public static class QueueHelper<T> where T : PKM, new()
                     string footerText = $"Batch Trade {batchTradeNumber} of {totalBatchTrades}";
                     if (i == 0) // Only show position and ETA on first embed
                     {
-                        footerText += $" | Position: {position.Position}";
-                        string userDetailsText = DetailsExtractor<T>.GetUserDetails(totalTradeCount, tradeDetails);
+                        footerText += $" | Current Queue Position: {position.Position}";
+                        string trainerMention = trader.Mention;
+                        string userDetailsText = DetailsExtractor<T>.GetUserDetails(totalTradeCount, tradeDetails, trainerMention);
+
                         if (!string.IsNullOrEmpty(userDetailsText))
                         {
                             footerText += $"\n{userDetailsText}";
                         }
-                        footerText += $"\nEstimated: {baseEta:F1} min(s) for batch\n";
-                        footerText += $"\n✧ DudeBot.NET {DudeBot.Version} ✧";
-
+                        footerText += $"\nWait Estimate: {baseEta:F1} min(s) for batch";
                     }
 
                     // Create embed

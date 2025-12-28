@@ -2,16 +2,11 @@ using PKHeX.Core;
 using SysBot.Base;
 using SysBot.Pokemon.Helpers;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Runtime.Intrinsics.Arm;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-using static SysBot.Base.SwitchButton;
-using System.Xml;
 
 namespace SysBot.Pokemon;
 
@@ -24,51 +19,15 @@ public abstract class PokeRoutineExecutor<T>(IConsoleBotManaged<IConsoleConnecti
     // Check if either Tesla or dmnt are active if the sanity check for Trainer Data fails, as these are common culprits.
     private const ulong ovlloaderID = 0x420000000007e51a;
 
-    // Get the first 12 characters of the SHA1 hash of the data, in uppercase.
-    public static string GetSHA1Hex(byte[] data)
-    {
-        using var sha1 = SHA1.Create();
-        byte[] hashBytes = sha1.ComputeHash(data);
-        return BitConverter.ToString(hashBytes).Replace("-", "").Substring(0, 12).ToUpperInvariant();
-    }
-
-    // Dumps a PKM to a file in the specified folder in the format: OT - Species (Localized) Shiny[SHA1].pkx
-    public static void DumpPokemon<T>(string folder, string subfolder, T pk) where T : PKM
+    public static void DumpPokemon(string folder, string subfolder, T pk)
     {
         if (!Directory.Exists(folder))
             return;
         var dir = Path.Combine(folder, subfolder);
         Directory.CreateDirectory(dir);
-
-        // Get OT Name
-        string ot = pk.OriginalTrainerName ?? "Unknown";
-
-        // Get names
-        int species = pk.Species;
-        var langID = (LanguageID)pk.Language;
-
-        string english = LanguageHelper.GetLocalizedSpeciesName(species, LanguageID.English);
-        string localized = LanguageHelper.GetLocalizedSpeciesName(species, langID);
-
-        // Only show localized if it's different than English and the language isn't English
-        bool showLocalized = langID != LanguageID.English && !string.Equals(english, localized, StringComparison.OrdinalIgnoreCase);
-        string speciesName = showLocalized ? $"{english} ({localized})" : english;
-
-        // Shiny marker
-        string shiny = pk.IsShiny ? "★ " : "";
-
-        // SHA1 hash - 12 characters
-        string hash = GetSHA1Hex(pk.DecryptedPartyData);
-
-        // Final filename
-        string fileName = $"{ot} - {speciesName} {shiny}[{hash}].{pk.Extension}";
-        string cleaned = PathUtil.CleanFileName(fileName);
-
-        // Save the file
-        string finalPath = Path.Combine(dir, cleaned);
-        File.WriteAllBytes(finalPath, pk.DecryptedPartyData);
-
-        LogUtil.LogInfo($"Saved file: {finalPath}", "Dump");
+        var fn = Path.Combine(dir, PathUtil.CleanFileName(pk.FileName));
+        File.WriteAllBytes(fn, pk.DecryptedPartyData);
+        LogUtil.LogInfo("Dump", $"Saved file: {fn}");
     }
 
     public static void LogSuccessfulTrades(PokeTradeDetail<T> poke, ulong TrainerNID, string TrainerName)
@@ -182,143 +141,47 @@ public abstract class PokeRoutineExecutor<T>(IConsoleBotManaged<IConsoleConnecti
 
     // Tesla Menu
     // dmnt used for cheats
-    protected async Task<PokeTradeResult> CheckPartnerReputation(
-        PokeRoutineExecutor<T> bot,
-        PokeTradeDetail<T> poke,
-        ulong TrainerNID,
-        string TrainerName,
-        TradeAbuseSettings AbuseSettings,
-        CancellationToken token)
+    protected PokeTradeResult CheckPartnerReputation(PokeRoutineExecutor<T> bot, PokeTradeDetail<T> poke, ulong TrainerNID, string TrainerName,
+        TradeAbuseSettings AbuseSettings, CancellationToken token)
     {
         bool quit = false;
         var user = poke.Trainer;
         var isDistribution = poke.Type == PokeTradeType.Random;
-        var useridmsg = isDistribution ? "" : $" (NID: {TrainerNID})";
         var list = isDistribution ? PreviousUsersDistribution : PreviousUsers;
 
-        // Check if the NID is in the banned list
+        // Matches to a list of banned NIDs, in case the user ever manages to enter a trade.
         var entry = AbuseSettings.BannedIDs.List.Find(z => z.ID == TrainerNID);
         if (entry != null)
         {
-            // Block the user if the setting is enabled
-            if (AbuseSettings.BlockDetectedBannedUser && bot is PokeRoutineExecutor8SWSH)
-                await BlockUser(token).ConfigureAwait(false);
-
-            var msg = $"{user.TrainerName}{useridmsg} is a banned user, and was encountered in-game using OT: {TrainerName}.";
-            if (!string.IsNullOrWhiteSpace(entry.Comment))
-                msg += $"\nUser was banned for: {entry.Comment}";
-            if (!string.IsNullOrWhiteSpace(AbuseSettings.BannedIDMatchEchoMention))
-                msg = $"{AbuseSettings.BannedIDMatchEchoMention} {msg}";
-
-            EchoUtil.EchoAbuseMessage(msg);
             return PokeTradeResult.SuspiciousActivity;
         }
 
-        // Check previous trades with this NID
+        // Check within the trade type (distribution or non-Distribution).
         var previous = list.TryGetPreviousNID(TrainerNID);
         if (previous != null)
         {
-            var delta = DateTime.Now - previous.Time; // Time since last trade
-            Log($"Last traded with NID: {TrainerNID} {delta.TotalMinutes:F1} minutes ago (OT: {TrainerName}).");
+            var delta = DateTime.Now - previous.Time; // Time that has passed since last trade.
+            Log($"Last traded with {user.TrainerName} {delta.TotalMinutes:F1} minutes ago (OT: {TrainerName}).");
 
-            // Check if the same NID is using a different Discord account
-            if (previous.RemoteID != user.ID && user.ID != 0)
+            // Allows setting a cooldown for repeat trades. If the same user is encountered within the cooldown period for the same trade type, the user is warned and the trade will be ignored.
+            var cd = AbuseSettings.TradeCooldown; // Time they must wait before trading again.
+            if (cd != 0 && TimeSpan.FromMinutes(cd) > delta)
             {
-                var abuseExpiration = TimeSpan.FromMinutes(AbuseSettings.TradeAbuseExpiration);
-                if (delta < abuseExpiration)
-                {
-                    var msg = AbuseSettings.EchoNintendoOnlineIDMulti
-                        ? $"Detected same NID: {TrainerNID} using different Discord accounts.\n"
-                        : "Detected same NID using different Discord accounts.\n";
-
-                    msg += $"Previous: {previous.Name} (Discord ID: {previous.RemoteID})\n" +
-                           $"Current: {user.TrainerName} (Discord ID: {user.ID})";
-
-                    if (!string.IsNullOrWhiteSpace(AbuseSettings.MultiAbuseEchoMention))
-                        msg = $"{AbuseSettings.MultiAbuseEchoMention} {msg}";
-
-                    EchoUtil.EchoAbuseMessage(msg);
-
-                    if (AbuseSettings.TradeAbuseAction != TradeAbuseAction.Ignore)
-                    {
-                        if (AbuseSettings.TradeAbuseAction == TradeAbuseAction.BlockAndQuit)
-                        {
-                            await BlockUser(token).ConfigureAwait(false);
-                            if (AbuseSettings.BanIDWhenBlockingUser)
-                            {
-                                AbuseSettings.BannedIDs.AddIfNew(new[] { GetReference(TrainerName, TrainerNID, "Multiple Discord accounts") });
-                                Log($"Added {TrainerNID} to the BannedIDs list for using multiple Discord accounts.");
-                            }
-                        }
-                        quit = true;
-                    }
-                }
-            }
-
-            // Cooldown check
-            var cd = AbuseSettings.TradeCooldown;
-            if (cd != 0 && delta < TimeSpan.FromMinutes(cd))
-            {
-                var wait = TimeSpan.FromMinutes(cd) - delta;
-                poke.Notifier.SendNotification(bot, poke, $"You are still on trade cooldown, and cannot trade for another {wait.TotalMinutes:F1} minute(s).");
-
-                var msg = AbuseSettings.EchoNintendoOnlineIDCooldown
-                    ? $"Found NID: {TrainerNID} (OT: {TrainerName}) ignoring the {cd} minute trade cooldown. Last encountered {delta.TotalMinutes:F1} minutes ago."
-                    : $"Found user (OT: {TrainerName}) ignoring the {cd} minute trade cooldown. Last encountered {delta.TotalMinutes:F1} minutes ago.";
-
-                if (!string.IsNullOrWhiteSpace(AbuseSettings.CooldownAbuseEchoMention))
-                    msg = $"{AbuseSettings.CooldownAbuseEchoMention} {msg}";
-
-                EchoUtil.EchoAbuseMessage(msg);
+                Log($"Found {user.TrainerName} ignoring the {cd} minute trade cooldown. Last encountered {delta.TotalMinutes:F1} minutes ago.");
                 return PokeTradeResult.SuspiciousActivity;
             }
-        }
 
-        // Check for users sending to multiple in-game accounts (non-distribution trades)
-
-        if (!AbuseSettings.AllowMultiGame)
-        {
-            if (!isDistribution && user.ID != 0)
+            // For distribution trades only, flag users using multiple Discord/Twitch accounts to send to the same in-game player within the TradeAbuseExpiration time limit.
+            // This is usually to evade a ban or a trade cooldown.
+            if (isDistribution && previous.NetworkID == TrainerNID && previous.RemoteID != user.ID)
             {
-                var previous_remote = list.TryGetPreviousRemoteID(user.ID);
-                if (previous_remote != null && previous_remote.NetworkID != TrainerNID)
+                if (delta < TimeSpan.FromMinutes(AbuseSettings.TradeAbuseExpiration))
                 {
-                    var delta = DateTime.Now - previous_remote.Time;
-                    var abuseExpiration = TimeSpan.FromMinutes(AbuseSettings.TradeAbuseExpiration);
-
-                    if (delta < abuseExpiration)
-                    {
-                        var msg = AbuseSettings.EchoNintendoOnlineIDMultiRecipients
-                            ? $"Detected Discord ID: {user.ID} trading with different NIDs.\n" +
-                              $"Previous NID: {previous_remote.NetworkID} (OT: {previous_remote.Name})\n" +
-                              $"Current NID: {TrainerNID} (OT: {TrainerName})"
-                            : $"Detected Discord ID: {user.ID} trading with different in-game accounts.\n" +
-                              $"Previous OT: {previous_remote.Name}\n" +
-                              $"Current OT: {TrainerName}";
-
-                        if (!string.IsNullOrWhiteSpace(AbuseSettings.MultiRecipientEchoMention))
-                            msg = $"{AbuseSettings.MultiRecipientEchoMention} {msg}";
-
-                        EchoUtil.EchoAbuseMessage(msg);
-
-                        if (AbuseSettings.TradeAbuseAction != TradeAbuseAction.Ignore)
-                        {
-                            if (AbuseSettings.TradeAbuseAction == TradeAbuseAction.BlockAndQuit)
-                            {
-                                await BlockUser(token).ConfigureAwait(false);
-                                if (AbuseSettings.BanIDWhenBlockingUser)
-                                {
-                                    AbuseSettings.BannedIDs.AddIfNew(new[] { GetReference(TrainerName, TrainerNID, "Trading with multiple NIDs") });
-                                    Log($"Added {TrainerNID} to the BannedIDs list for trading with multiple NIDs.");
-                                }
-                            }
-                            quit = true;
-                        }
-                    }
+                    quit = true;
+                    Log($"Found {user.TrainerName} using multiple accounts.\nPreviously traded with {previous.Name} ({previous.RemoteID}) {delta.TotalMinutes:F1} minutes ago on OT: {TrainerName}.");
                 }
             }
         }
-        list.TryRegister(TrainerNID, TrainerName, user.ID);
 
         if (quit)
             return PokeTradeResult.SuspiciousActivity;
@@ -330,22 +193,5 @@ public abstract class PokeRoutineExecutor<T>(IConsoleBotManaged<IConsoleConnecti
     {
         var solved = await SwitchConnection.PointerAll(jumps, token).ConfigureAwait(false);
         return (solved != 0, solved);
-    }
-    private static RemoteControlAccess GetReference(string name, ulong id, string comment) => new()
-    {
-        ID = id,
-        Name = name,
-        Comment = $"Added automatically on {DateTime.Now:yyyy.MM.dd-hh:mm:ss} ({comment})",
-    };
-    private async Task BlockUser(CancellationToken token)
-    {
-        Log("Blocking user in-game...");
-        await PressAndHold(RSTICK, 0_750, 0, token).ConfigureAwait(false);
-        await Click(DUP, 0_300, token).ConfigureAwait(false);
-        await Click(A, 1_300, token).ConfigureAwait(false);
-        await Click(A, 1_300, token).ConfigureAwait(false);
-        await Click(DUP, 0_300, token).ConfigureAwait(false);
-        await Click(A, 1_100, token).ConfigureAwait(false);
-        await Click(A, 1_100, token).ConfigureAwait(false);
     }
 }

@@ -101,6 +101,18 @@ public sealed partial class Main : Form
             Config.Hub.Folder.CreateDefaults(Program.WorkingDirectory);
         }
 
+        // Create default folders if they do not exist even if a config file is present
+        var dump = Config.Hub.Folder.DumpFolder;
+        var distri = Config.Hub.Folder.DistributeFolder;
+        var home = Config.Hub.Folder.HOMEReadyPKMFolder;
+        var events = Config.Hub.Folder.EventsFolder;
+
+        if ((!Directory.Exists(dump)) || (!Directory.Exists(distri)) || (!Directory.Exists(home)) || (!Directory.Exists(events)))
+        {
+            Config.Hub.Folder.CreateDefaults(Program.WorkingDirectory);
+            LogUtil.LogInfo("Required folders created.", "Form");
+        }
+
         RTB_Logs.MaxLength = 32_767; // character length
         LoadControls();
         Text = $"{(string.IsNullOrEmpty(Config.Hub.BotName) ? "DudeBot.NET" : Config.Hub.BotName)} {DudeBot.Version} ({Config.Mode})";

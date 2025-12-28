@@ -35,7 +35,7 @@ namespace SysBot.Pokemon.Discord.Helpers
             { "Mark", "Mark" },
             { "Ribbon", "Ribbon" },
             { "GVs", "GVs" },
-            { "OT Friendship", "OriginalTrainerFriendship" },
+            { "Friendship", "OriginalTrainerFriendship" },
             { "HT Friendship", "HandlingTrainerFriendship" },
         };
 
@@ -150,7 +150,7 @@ namespace SysBot.Pokemon.Discord.Helpers
                 ? $".HeightScalar={Rng.Next(range.Min, range.Max + 1)}"
                 : $".HeightScalar={val}";
 
-        // .OriginalTrainerFriendship= → OT Friendship:
+        // .OriginalTrainerFriendship= → Friendship:
         // Value is between 1-255
         private static string ProcessFriendshipOT(string val) =>
             int.TryParse(val, out int f) && f >= 1 && f <= 255

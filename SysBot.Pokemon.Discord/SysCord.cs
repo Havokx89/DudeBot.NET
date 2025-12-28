@@ -1,19 +1,20 @@
 using Discord;
 using Discord.Commands;
-using Discord.Net;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using PKHeX.Core;
 using SysBot.Base;
-using SysBot.Pokemon.Discord.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using SysBot.Pokemon.Discord.Helpers;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using static Discord.GatewayIntents;
 using static SysBot.Pokemon.DiscordSettings;
+using Discord.Net;
 
 namespace SysBot.Pokemon.Discord;
 
@@ -26,7 +27,7 @@ public static class SysCordSettings
     public static DiscordSettings Settings => Manager.Config;
 }
 
-public sealed class SysCord<T> where T : PKM, new()
+public sealed partial class SysCord<T> where T : PKM, new()
 {
     public readonly PokeTradeHub<T> Hub;
     private readonly ProgramConfig _config;
@@ -40,11 +41,16 @@ public sealed class SysCord<T> where T : PKM, new()
 
     private readonly HashSet<string> _validCommands =
     [
-        "trade", "t", "clone", "fixOT", "fix", "f", "dittoTrade", "ditto", "dt", "itemTrade", "item", "it",
-        "egg", "Egg", "hidetrade", "ht", "batchTrade", "bt", "listevents", "le",
-        "eventrequest", "er", "battlereadylist", "brl", "battlereadyrequest", "brr", "pokepaste", "pp",
-        "PokePaste", "PP", "randomteam", "rt", "RandomTeam", "Rt", "specialrequestpokemon", "srp",
-        "queueStatus", "qs", "queueClear", "qc", "ts", "tc", "deleteTradeCode", "dtc", "mysteryegg", "me"
+     "BatchTrade", "Batchtrade", "batchTrade", "batchtradezip", "battlereadylist", "battlereadyrequest", "brl", "brr",
+        "BT", "bt", "BTZ", "btz", "C", "c", "CLONE", "Clone", "clone", "CONVERT", "Convert", "convert", "D", "d", "deleteTradeCode",
+        "Ditto", "ditto", "dittoTrade", "dittotrade", "dt", "DTC", "dtc", "DUMP", "Dump", "dump", "Egg", "egg", "er", "eventrequest",
+        "f", "fix", "FixOT", "fixOT", "fixot", "Hello", "hello", "Help", "help", "Hi", "hi", "Hidetrade", "hideTrade", "hidetrade",
+        "HT", "ht", "INFO", "info", "it", "Item", "item", "itemTrade", "joke", "Lc", "LC", "LCV", "lcv", "le", "LE", "Legalize", "legalize",
+        "listevents", "Me", "me", "MysteryEgg", "mysteryegg", "PokePaste", "pokepaste", "PP", "pp", "QC", "Qc", "qc", "QS", "Qs", "qs",
+        "queueClear", "queueclear", "queueStatus", "Random", "random", "RandomTeam", "randomteam", "rt", "SEED", "Seed", "seed",
+        "specialrequestpokemon", "srp", "st", "status", "SURPRISE", "Surprise", "surprise", "surprisetrade", "T", "t", "tc", "TRADE",
+        "Trade", "trade", "ts", "mm", "mysterymon", "Mysterymon", "MysteryMon", "homeready", "hrr", "hr", "MM", "HRR", "TV", "tv", "TT", "tt",
+        "texttrade", "TextTrade", "Texttrade", "remotestart", "RemoteStart", "Remotestart", "startremote", "StartRemote", "Startremote"
     ];
 
     private readonly DiscordManager Manager;
@@ -125,7 +131,6 @@ public sealed class SysCord<T> where T : PKM, new()
             GatewayIntents = Guilds | GuildMessages | DirectMessages | GuildMembers | GuildPresences | MessageContent,
         });
 
-
         // ===== DM Relay Setup =====
         ulong forwardTargetId = 0;
         if (!string.IsNullOrWhiteSpace(Hub.Config.Discord.UserDMsToBotForwarder))
@@ -141,6 +146,7 @@ public sealed class SysCord<T> where T : PKM, new()
             _ = new DMRelayService(_client, forwardTargetId);
             LogUtil.LogInfo("SysCord", $"DM relay active -> forwarding bot DMs to {forwardTargetId}");
         }
+
 
         _commands = new CommandService(new CommandServiceConfig
         {
@@ -276,6 +282,13 @@ public sealed class SysCord<T> where T : PKM, new()
         if (!SysCordSettings.Settings.BotEmbedStatus)
             return;
 
+        // Check if client is connected before attempting to announce
+        if (_client == null || _client.ConnectionState != ConnectionState.Connected)
+        {
+            LogUtil.LogInfo("SysCord", "Cannot announce bot status: Discord client is not connected");
+            return;
+        }
+
         var botName = string.IsNullOrEmpty(SysCordSettings.HubConfig.BotName) ? "SysBot" : SysCordSettings.HubConfig.BotName;
         var fullStatusMessage = $"**Status**: {botName} is {status}!";
         var thumbnailUrl = status == "Online"
@@ -294,6 +307,13 @@ public sealed class SysCord<T> where T : PKM, new()
         {
             try
             {
+                // Check connection state before each channel operation
+                if (_client.ConnectionState != ConnectionState.Connected)
+                {
+                    LogUtil.LogInfo("SysCord", "Discord client disconnected during status announcement, aborting");
+                    return;
+                }
+
                 ITextChannel? textChannel = _client.GetChannel(channelId) as ITextChannel;
                 if (textChannel == null)
                 {
@@ -348,6 +368,11 @@ public sealed class SysCord<T> where T : PKM, new()
                     LogUtil.LogInfo("SysCord", $"Channel {channelId} is not a text channel or could not be found");
                 }
             }
+            catch (ObjectDisposedException)
+            {
+                LogUtil.LogInfo("SysCord", "Discord client was disposed during status announcement, aborting");
+                return;
+            }
             catch (Exception ex)
             {
                 LogUtil.LogInfo("SysCord", $"AnnounceBotStatus: Exception in channel {channelId}: {ex.Message}");
@@ -378,6 +403,7 @@ public sealed class SysCord<T> where T : PKM, new()
             LogUtil.LogText($"HandleBotStop: Exception when announcing bot stop: {ex.Message}");
         }
     }
+
     private void InitializeRecoveryNotifications()
     {
         if (!Hub.Config.Recovery.EnableRecovery)
@@ -452,7 +478,6 @@ public sealed class SysCord<T> where T : PKM, new()
 
         // Initialize recovery notifications if recovery is enabled
         InitializeRecoveryNotifications();
-
         try
         {
             // Wait infinitely so your bot actually stays connected.
@@ -529,17 +554,19 @@ public sealed class SysCord<T> where T : PKM, new()
 
         var responses = new List<string>
         {
-            "You're welcome! ❤️",
-            "No problem at all!",
-            "Anytime, glad to help!",
-            "It's my pleasure! ❤️",
-            "Not a problem! You're welcome!",
-            "Always here to help!",
-            "Glad I could assist!",
-            "Happy to serve!",
-            "Of course! You're welcome!",
-            "Sure thing!"
-        };
+        "It is an honor for you to be in my presence.",
+        "You good, homie.",
+        "Always here to help people like you, even if you *are* funny looking.",
+        "It's your pleasure and my burden.",
+        "It was a little annoying, but I liked you enough, so yay you, I guess...",
+        "You should really be showing appreciation to your parents instead.",
+        "Yes... thank me, you bootlicker! :)",
+        "Not a problem, you weak and meager human! :D",
+        "If you were *truly* appreciative, you'd pay me in dance. Now dance, monkey!",
+        "No hablo Espanol or something...",
+        "Did you really just show me appreciation? Lol, I'm a bot, dummy. I don't care.",
+        "No problem. Now give me your dog for the sacrifice."
+    };
 
         var randomResponse = responses[new Random().Next(responses.Count)];
         var finalResponse = $"{randomResponse}";
@@ -591,33 +618,76 @@ public sealed class SysCord<T> where T : PKM, new()
                 return;
 
             string thanksText = msg.Content.ToLower();
-            if (SysCordSettings.Settings.ReplyToThanks && (thanksText.Contains("thank") || thanksText.Contains("thx")))
+            if (SysCordSettings.Settings.ReplyToThanks &&
+                (thanksText.Contains("thank") ||
+                (thanksText.Contains("arigato") ||
+                (thanksText.Contains("amazing") ||
+                (thanksText.Contains("incredible") ||
+                (thanksText.Contains("i love you") ||
+                (thanksText.Contains("awesome") ||
+                (thanksText.Contains("thanx")
+                ))))))))
             {
                 await SysCord<T>.RespondToThanksMessage(msg).ConfigureAwait(false);
                 return;
             }
 
-            var correctPrefix = SysCordSettings.Settings.CommandPrefix;
-            var content = msg.Content;
-            var argPos = 0;
+            char[] allowedPrefixes = new[]
+            {
+    '$', '!', '.', '=', '%', '~', '-', '+', ',', '/', '?', '*', '^',
+    '<', '>', '"', '`', '4', ';', ':'
+};
 
-            if (msg.HasMentionPrefix(_client.CurrentUser, ref argPos) || msg.HasStringPrefix(correctPrefix, ref argPos))
+            var correctPrefix = SysCordSettings.Settings.CommandPrefix;
+            bool allowAnyPrefix = SysCordSettings.HubConfig.Discord.AllowAnyPrefix;
+            string content = msg.Content;
+            int argPos = 0;
+
+            // --- STRICT MODE (AllowAnyPrefix = false) ---
+
+            if (!allowAnyPrefix)
             {
-                var context = new SocketCommandContext(_client, msg);
-                var handled = await TryHandleCommandAsync(msg, context, argPos);
-                if (handled)
+                // If message doesn't start with ANY allowed prefix → it's just normal chat
+                if (content.Length == 0 || !allowedPrefixes.Contains(content[0]))
                     return;
-            }
-            else if (content.Length > 1 && content[0] != correctPrefix[0])
-            {
-                var potentialPrefix = content[0].ToString();
-                var command = content.Split(' ')[0][1..];
-                if (_validCommands.Contains(command))
+
+                // Now we know it STARTS with a prefix-like symbol.
+                // If it's NOT the correct prefix → show the error.
+                if (!content.StartsWith(correctPrefix))
                 {
-                    await SafeSendMessageAsync(msg.Channel, $"Incorrect prefix! The correct command is **{correctPrefix}{command}**").ConfigureAwait(false);
+                    await SafeSendMessageAsync(msg.Channel,
+                        $"Incorrect prefix! The correct prefix is `{correctPrefix}`");
+                    return;
+                }
+
+                // Valid strict prefix
+                argPos = correctPrefix.Length;
+            }
+            else
+            {
+                // AllowAnyPrefix = true → accept ANY allowed prefix OR the correct one.
+
+                if (content.Length > 0 && allowedPrefixes.Contains(content[0]))
+                {
+                    argPos = 1;
+                }
+                else if (content.StartsWith(correctPrefix))
+                {
+                    argPos = correctPrefix.Length;
+                }
+                else
+                {
+                    // normal chatting → ignore
                     return;
                 }
             }
+
+            // --- HANDLE COMMAND ---
+            var context = new SocketCommandContext(_client, msg);
+            var handled = await TryHandleCommandAsync(msg, context, argPos);
+            if (handled)
+                return;
+
 
             if (msg.Attachments.Count > 0)
             {
@@ -652,6 +722,12 @@ public sealed class SysCord<T> where T : PKM, new()
 
         // Restore Echoes
         EchoModule.RestoreChannels(_client, Hub.Config.Discord);
+
+        // Subscribe to queue status changes
+        QueueMonitor<T>.OnQueueStatusChanged = async (isFull, currentCount, maxCount) =>
+        {
+            await EchoModule.SendQueueStatusEmbedAsync(isFull, currentCount, maxCount).ConfigureAwait(false);
+        };
 
         // Restore Logging
         LogModule.RestoreLogging(_client, Hub.Config.Discord);

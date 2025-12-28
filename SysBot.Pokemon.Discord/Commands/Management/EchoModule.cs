@@ -36,7 +36,9 @@ namespace SysBot.Pokemon.Discord
     {
         private static DiscordSettings? Settings { get; set; }
 
-        private class EchoChannel(ulong channelId, string channelName, Action<string> action, Action<byte[], string, EmbedBuilder>? raidAction)
+        private static DiscordSocketClient? _discordClient;
+
+        private class EchoChannel(ulong channelId, string channelName, Action<string> action, Action<byte[], string, EmbedBuilder> raidAction)
         {
             public readonly ulong ChannelID = channelId;
 
@@ -44,18 +46,18 @@ namespace SysBot.Pokemon.Discord
 
             public readonly Action<string> Action = action;
 
-            public readonly Action<byte[], string, EmbedBuilder>? RaidAction = raidAction;
+            public readonly Action<byte[], string, EmbedBuilder> RaidAction = raidAction;
 
             public string EmbedResult = string.Empty;
         }
 
-        private class EncounterEchoChannel(ulong channelId, string channelName, Action<string, Embed>? embedaction)
+        private class EncounterEchoChannel(ulong channelId, string channelName, Action<string, Embed> embedaction)
         {
             public readonly ulong ChannelID = channelId;
 
             public readonly string ChannelName = channelName;
 
-            public readonly Action<string, Embed>? EmbedAction = embedaction;
+            public readonly Action<string, Embed> EmbedAction = embedaction;
 
             public string EmbedResult = string.Empty;
         }
@@ -64,92 +66,60 @@ namespace SysBot.Pokemon.Discord
 
         private static readonly Dictionary<ulong, EncounterEchoChannel> EncounterChannels = [];
 
-        private static readonly Dictionary<ulong, EchoChannel> AbuseChannels = [];
-
         public static void RestoreChannels(DiscordSocketClient discord, DiscordSettings cfg)
         {
             Settings = cfg;
+            _discordClient = discord;
             foreach (var ch in cfg.AnnouncementChannels)
             {
                 if (discord.GetChannel(ch.ID) is ISocketMessageChannel c)
                     AddEchoChannel(c, ch.ID);
             }
-            foreach (var ch in cfg.AbuseLogChannels)
-            {
-                if (discord.GetChannel(ch.ID) is ISocketMessageChannel c)
-                    AddAbuseEchoChannel(c, ch.ID);
-            }
+
+            // EchoUtil.Echo("Added echo notification to Discord channel(s) on Bot startup.");
         }
 
-        [Command("AddAbuseEchoChannel")]
-        [Alias("aaec")]
-        [Summary("Makes the bot post abuse logs to the channel.")]
-        [RequireSudo]
-        public async Task AddAbuseEchoAsync()
+        public static async Task SendQueueStatusEmbedAsync(bool isFull, int currentCount, int maxCount)
         {
-            var c = Context.Channel;
-            var cid = c.Id;
-            if (AbuseChannels.TryGetValue(cid, out _))
-            {
-                await ReplyAsync("Already logging abuse in this channel.").ConfigureAwait(false);
+            if (Settings == null || _discordClient == null || Channels.Count == 0)
                 return;
-            }
 
-            AddAbuseEchoChannel(c, cid);
-            SysCordSettings.Settings.AbuseLogChannels.AddIfNew([GetReference(Context.Channel)]);
-            await ReplyAsync("Added Abuse Log output to this channel!").ConfigureAwait(false);
-        }
+            var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var formattedTimestamp = $"<t:{unixTimestamp}:F>";
 
-        private static void AddAbuseEchoChannel(ISocketMessageChannel c, ulong cid)
-        {
-            async void l(string msg) => await SendMessageWithRetry(c, msg).ConfigureAwait(false);
-            EchoUtil.AbuseForwarders.Add(l);
-            var entry = new EchoChannel(cid, c.Name, l, null);
-            AbuseChannels.Add(cid, entry);
-        }
+            var embedColor = isFull ? Color.Red : Color.Green;
+            var title = isFull ? "🚫 Queue is Now Full!" : "✅ Queue is Now Open!";
+            var description = isFull
+                ? $"The queue has reached maximum capacity and is now **closed**.\n\n**Current Queue Count:** {currentCount}/{maxCount}\n\nThe queue will automatically open when trades are completed and space becomes available.\n\n**Status Updated:** {formattedTimestamp}"
+                : $"The queue is now **open** and accepting new trades!\n\n**Current Queue Count:** {currentCount}/{maxCount}\n\n**Status Updated:** {formattedTimestamp}";
 
-        public static bool IsAbuseEchoChannel(ISocketMessageChannel c)
-        {
-            var cid = c.Id;
-            return AbuseChannels.TryGetValue(cid, out _);
-        }
+            var thumbnailUrl = Settings.AnnouncementSettings.RandomAnnouncementThumbnail ? GetRandomThumbnail() : GetSelectedThumbnail();
 
-        [Command("RemoveAbuseEchoChannel")]
-        [Alias("raec")]
-        [Summary("Removes the abuse logging from the channel.")]
-        [RequireSudo]
-        public async Task RemoveAbuseEchoAsync()
-        {
-            var id = Context.Channel.Id;
-            if (!AbuseChannels.TryGetValue(id, out var echo))
+            var embed = new EmbedBuilder
             {
-                await ReplyAsync("Not logging abuse in this channel.").ConfigureAwait(false);
-                return;
+                Color = embedColor,
+                Description = description
             }
-            AbuseChannels.Remove(id);
-            SysCordSettings.Settings.AbuseLogChannels.RemoveAll(z => z.ID == id);
-            await ReplyAsync($"Abuse logging removed from channel: {Context.Channel.Name}").ConfigureAwait(false);
-        }
+            .WithTitle(title)
+            .WithThumbnailUrl(thumbnailUrl)
+            .WithFooter("Queue status updates are automatic")
+            .Build();
 
-        [Command("ListAbuseEchoChannels")]
-        [Alias("laec")]
-        [Summary("Lists all channels where abuse logging is enabled.")]
-        [RequireSudo]
-        public async Task ListAbuseEchoChannelsAsync()
-        {
-            if (AbuseChannels.Count == 0)
+            foreach (var channelEntry in Channels)
             {
-                await ReplyAsync("No channels are currently set up for abuse logging.").ConfigureAwait(false);
-                return;
+                var channelId = channelEntry.Key;
+                try
+                {
+                    if (_discordClient.GetChannel(channelId) is ISocketMessageChannel channel)
+                    {
+                        await channel.SendMessageAsync(embed: embed).ConfigureAwait(false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogUtil.LogError($"Failed to send queue status to channel {channelId}: {ex.Message}", nameof(SendQueueStatusEmbedAsync));
+                }
             }
-
-            var response = "Abuse logging is enabled in the following channels:\n";
-            foreach (var channel in AbuseChannels.Values)
-            {
-                response += $"- {channel.ChannelName} (ID: {channel.ChannelID})\n";
-            }
-
-            await ReplyAsync(response).ConfigureAwait(false);
         }
 
         [Command("Announce", RunMode = RunMode.Async)]

@@ -28,9 +28,9 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
         var tradeCodeStorage = new TradeCodeStorage();
         int totalTrades = tradeCodeStorage.GetTradeCount(Context.User.Id);
 
-        if (totalTrades < 0)
+        if (totalTrades == 0)
         {
-            await ReplyAsync($"{Context.User.Username}, you haven't made any trades yet. Start trading to earn your first medal!");
+            await ReplyAsync($"{Context.User.Username}, you haven't made any trades yet.\nStart trading to earn your first medal!");
             return;
         }
 
@@ -519,18 +519,6 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
             args
         );
 
-    [Command("battlereadylist")]
-    [Alias("brl")]
-    [Summary("Lists available battle-ready files, filtered by a specific letter or substring, and sends the list via DM.")]
-    public Task BattleReadyListAsync([Remainder] string args = "")
-        => ListHelpers<T>.HandleListCommandAsync(
-            Context,
-            SysCord<T>.Runner.Config.Folder.BattleReadyPKMFolder,
-            "battle-ready files",
-            "brr",
-            args
-        );
-
     #endregion
 
     #region Request Commands
@@ -546,19 +534,6 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
             index,
             "event",
             "le"
-        );
-
-    [Command("battlereadyrequest")]
-    [Alias("brr", "br")]
-    [Summary("Downloads battle-ready attachments from the specified folder and adds to trade queue.")]
-    [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
-    public Task BattleReadyRequestAsync(int index)
-        => ListHelpers<T>.HandleRequestCommandAsync(
-            Context,
-            SysCord<T>.Runner.Config.Folder.BattleReadyPKMFolder,
-            index,
-            "battle-ready file",
-            "brl"
         );
 
     #endregion

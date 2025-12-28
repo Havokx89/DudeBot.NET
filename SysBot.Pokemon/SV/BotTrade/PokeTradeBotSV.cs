@@ -337,6 +337,18 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
             var newEC = await SwitchConnection.ReadBytesAbsoluteAsync(BoxStartOffset, 8, token).ConfigureAwait(false);
             if (!newEC.SequenceEqual(oldEC))
             {
+                // Check if partner offered a Pokemon that will evolve
+                if (Hub.Config.Trade.TradeConfiguration.DisallowTradeEvolve)
+                {
+                    var offered = await ReadUntilPresent(TradePartnerOfferedOffset, 2_000, 0_500, BoxFormatSlotSize, token).ConfigureAwait(false);
+                    if (offered != null && TradeEvolutions.WillTradeEvolve(offered.Species, offered.Form, offered.HeldItem, detail.TradeData.Species))
+                    {
+                        Log("Trade cancelled because trainer offered a Pokémon that would evolve upon trade.");
+                        detail.SendNotification(this, "Trade cancelled. You cannot trade a Pokémon that will evolve. To prevent this, either give your Pokémon an Everstone to hold, or trade a different Pokémon.");
+                        return PokeTradeResult.TradeEvolveNotAllowed;
+                    }
+                }
+
                 await Task.Delay(25_000, token).ConfigureAwait(false);
                 return PokeTradeResult.Success;
             }
@@ -593,15 +605,14 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
 
     private async Task<(PK9 toSend, PokeTradeResult check)> HandleClone(SAV9SV sav, PokeTradeDetail<PK9> poke, PK9 offered, byte[] oldEC, CancellationToken token)
     {
-        string speciesName = LanguageHelper.GetLocalizedSpeciesLog(offered);
 
         if (Hub.Config.Discord.ReturnPKMs)
-            poke.SendNotification(this, offered, $"Here's what you showed me - {speciesName}");
+            poke.SendNotification(this, offered, $"Here's what you showed me - {GameInfo.GetStrings("en").Species[offered.Species]}");
 
         var la = new LegalityAnalysis(offered);
         if (!la.Valid)
         {
-            Log($"Clone request (from {poke.Trainer.TrainerName}) has detected an invalid Pokémon: {speciesName}.");
+            Log($"Clone request (from {poke.Trainer.TrainerName}) has detected an invalid Pokémon: {GameInfo.GetStrings("en").Species[offered.Species]}.");
 
             if (DumpSetting.Dump)
                 DumpPokemon(DumpSetting.DumpFolder, "hacked", offered);
@@ -621,7 +632,7 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
             clone.Tracker = 0;
 
         poke.SendNotification(this, $"**Cloned your {GameInfo.GetStrings("en").Species[clone.Species]}!**\nNow press B to cancel your offer and trade me a Pokémon you don't want.");
-        Log($"Cloned a {LanguageHelper.GetLocalizedSpeciesLog(clone)}. Waiting for user to change their Pokémon...");
+        Log($"Cloned a {GameInfo.GetStrings("en").Species[clone.Species]}. Waiting for user to change their Pokémon...");
         TradeProgressChanged?.Invoke(72);
 
 
@@ -665,7 +676,7 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
     private async Task<(PK9 toSend, PokeTradeResult check)> HandleFixOT(SAV9SV sav, PokeTradeDetail<PK9> poke, PK9 offered, PartnerDataHolder partnerID, CancellationToken token)
     {
         if (Hub.Config.Discord.ReturnPKMs)
-            poke.SendNotification(this, offered, $"Here's what you showed me - {LanguageHelper.GetLocalizedSpeciesLog(offered)}");
+            poke.SendNotification(this, offered, $"Here's what you showed me - {GameInfo.GetStrings("en").Species[offered.Species]}");
 
         var adOT = TradeExtensions<PK9>.HasAdName(offered, out _);
         var laInit = new LegalityAnalysis(offered);
@@ -695,7 +706,7 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
 
         if (!laInit.Valid)
         {
-            Log($"FixOT request has detected an illegal Pokémon from {name}: {LanguageHelper.GetLocalizedSpeciesLog(offered)}");
+            Log($"FixOT request has detected an illegal Pokémon from {name}: {GameInfo.GetStrings("en").Species[offered.Species]}");
             var report = laInit.Report();
             Log(laInit.Report());
             poke.SendNotification(this, $"**Shown Pokémon is not legal. Attempting to regenerate...**\n\n```{report}```");
@@ -732,7 +743,7 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
 
         TradeExtensions<PK9>.HasAdName(offered, out string detectedAd);
         poke.SendNotification(this, $"{(!laInit.Valid ? "**Legalized" : "**Fixed Nickname/OT for")} {(Species)clone.Species}** (found ad: {detectedAd})! Now confirm the trade!");
-        Log($"{(!laInit.Valid ? "Legalized" : "Fixed Nickname/OT for")} {LanguageHelper.GetLocalizedSpeciesLog(clone)}!");
+        Log($"{(!laInit.Valid ? "Legalized" : "Fixed Nickname/OT for")} {GameInfo.GetStrings("en").Species[clone.Species]}!");
         TradeProgressChanged?.Invoke(72);
 
 
@@ -893,7 +904,7 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
                 for (int j = 0; j < allReceived.Count; j++)
                 {
                     var pokemon = allReceived[j];
-                    var speciesName = LanguageHelper.GetLocalizedSpeciesLog(pokemon);
+                    var speciesName = SpeciesName.GetSpeciesName(pokemon.Species, 2);
                     Log($"  - Returning: {speciesName} (Checksum: {pokemon.Checksum:X8})");
 
                     // Send the Pokemon directly to the notifier
@@ -1055,7 +1066,7 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
                     }
                 }
 
-                var partnerCheck = await CheckPartnerReputation(this, poke, trainerNID, tradePartner.TrainerName, AbuseSettings, token);
+                var partnerCheck = CheckPartnerReputation(this, poke, trainerNID, tradePartner.TrainerName, AbuseSettings, token);
                 if (partnerCheck != PokeTradeResult.Success)
                 {
                     poke.SendNotification(this, "Trade partner verification failed. Canceling the batch trades.");
@@ -1176,8 +1187,7 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
 
             BatchTracker.AddReceivedPokemon(originalTrainerID, received);
             completedTrades = currentTradeIndex + 1;
-            var speciesName = LanguageHelper.GetLocalizedSpeciesLog(received);
-            Log($"Added received Pokémon {speciesName} (Checksum: {received.Checksum:X8}) to batch tracker for trainer {originalTrainerID} (Trade {completedTrades}/{totalBatchTrades})");
+            Log($"Added received Pokémon {received.Species} (Checksum: {received.Checksum:X8}) to batch tracker for trainer {originalTrainerID} (Trade {completedTrades}/{totalBatchTrades})");
 
 
             if (completedTrades == totalBatchTrades)
@@ -1200,11 +1210,11 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
                     for (int j = 0; j < allReceived.Count; j++)
                     {
                         var pokemon = allReceived[j];
-                        Log($"  - Returning: {speciesName} (Checksum: {pokemon.Checksum:X8})");
+                        Log($"  - Returning: {GameInfo.GetStrings("en").Species[offered.Species]} (Checksum: {pokemon.Checksum:X8})");
 
 
                         // Send the Pokemon directly to the notifier
-                        poke.SendNotification(this, pokemon, $"Pokémon you traded to me: {speciesName}");
+                        poke.SendNotification(this, pokemon, $"Pokémon you traded to me: {GameInfo.GetStrings("en").Species[offered.Species]}");
                         await Task.Delay(500, token).ConfigureAwait(false);
                     }
                 }
@@ -1454,7 +1464,7 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
             }
         }
 
-        var partnerCheck = await CheckPartnerReputation(this, poke, trainerNID, tradePartner.TrainerName, AbuseSettings, token);
+        var partnerCheck = CheckPartnerReputation(this, poke, trainerNID, tradePartner.TrainerName, AbuseSettings, token);
         if (partnerCheck != PokeTradeResult.Success)
         {
             await Click(A, 1_000, token).ConfigureAwait(false); // Ensures we dismiss a popup.
@@ -1529,6 +1539,15 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
         else if (itemReq == SpecialTradeType.Shinify)
             poke.SendNotification(this, "Shinify success!  Thanks for being part of the community!");
 
+        // Check if the offered Pokemon will evolve upon trade BEFORE confirming
+        if (Hub.Config.Trade.TradeConfiguration.DisallowTradeEvolve && TradeEvolutions.WillTradeEvolve(offered.Species, offered.Form, offered.HeldItem, toSend.Species))
+        {
+            Log("Trade cancelled because trainer offered a Pokémon that would evolve upon trade.");
+            poke.SendNotification(this, "Trade cancelled. You cannot trade a Pokémon that will evolve. To prevent this, either give your Pokémon an Everstone to hold, or trade a different Pokémon.");
+            await ExitTradeToPortal(false, token).ConfigureAwait(false);
+            return PokeTradeResult.TradeEvolveNotAllowed;
+        }
+
         Log("Confirming trade.");
         TradeProgressChanged?.Invoke(86);
 
@@ -1560,10 +1579,7 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
         }
 
         // As long as we got rid of our inject in b1s1, assume the trade went through.
-        string otName = poke.Trainer.TrainerName;
-        var receivedSpeciesStr = LanguageHelper.GetLocalizedSpeciesLog(received);
-        var sentSpeciesStr = LanguageHelper.GetLocalizedSpeciesLog(toSend);
-        Log($"Trade completed. Received {receivedSpeciesStr} from {otName} in exchange for {sentSpeciesStr}.");
+        Log("User completed the trade.");
         TradeProgressChanged?.Invoke(100);
 
 

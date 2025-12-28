@@ -2,7 +2,7 @@ using PKHeX.Core;
 
 namespace SysBot.Pokemon.Discord;
 
-public sealed class FileNamer : IFileNamer<PKM>
+public sealed class DefaultPKMFileNamer : IFileNamer<PKM>
 {
     public string Name => "Default";
 
@@ -99,7 +99,6 @@ public sealed class FileNamer : IFileNamer<PKM>
         if (pk.BDSP) return "BBDSP";
         if (pk.LA) return "PLA";
         if (pk.SV) return "SV";
-        if (pk.ZA) return "ZA";
         return "Unknown";
     }
 }

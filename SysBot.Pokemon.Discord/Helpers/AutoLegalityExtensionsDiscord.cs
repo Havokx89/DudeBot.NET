@@ -1,11 +1,15 @@
 using Discord;
 using Discord.WebSocket;
+using Newtonsoft.Json.Linq;
 using PKHeX.Core;
 using PKHeX.Core.AutoMod;
 using SysBot.Base;
 using SysBot.Pokemon.Discord.Helpers;
+using SysBot.Pokemon.Discord.Helpers.TradeModule;
 using SysBot.Pokemon.Helpers;
 using System;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace SysBot.Pokemon.Discord;
@@ -16,49 +20,95 @@ public static class AutoLegalityExtensionsDiscord
     {
         if (set.Species <= 0)
         {
-            await channel.SendMessageAsync("Oops! I wasn't able to interpret your message! If you intended to convert something, please double check what you're pasting!").ConfigureAwait(false);
+            await channel.SendMessageAsync(
+                "Oops! I wasn't able to interpret your message! If you intended to convert something, please double check what you're pasting!"
+            ).ConfigureAwait(false);
             return;
         }
 
         try
         {
-            var template = AutoLegalityWrapper.GetTemplate(set);
-
             // Check if this is an egg request based on nickname
-            bool isEggRequest = set.Nickname.Equals("egg", StringComparison.CurrentCultureIgnoreCase) && Breeding.CanHatchAsEgg(set.Species);
+            bool isEggRequest = set.Nickname.Equals("egg", StringComparison.CurrentCultureIgnoreCase)
+                                && Breeding.CanHatchAsEgg(set.Species);
 
             PKM pkm;
             string result;
+
             if (isEggRequest)
             {
-                // Generate as egg using ALM's GenerateEgg method
-                pkm = sav.GenerateEgg(template, out var eggResult);
+                // Wrap the ShowdownSet directly in a RegenTemplate
+                var regenTemplate = new RegenTemplate(set);
+
+                // Generate egg using ALM
+                pkm = sav.GenerateEgg(regenTemplate, out var eggResult);
                 result = eggResult.ToString();
             }
             else
             {
                 // Generate normally
+                var template = AutoLegalityWrapper.GetTemplate(set);
                 pkm = sav.GetLegal(template, out result);
-            }
 
-            var la = new LegalityAnalysis(pkm);
-            var spec = GameInfo.Strings.Species[template.Species];
-            if (!la.Valid)
-            {
-                var reason = result == "Timeout" ? $"That {spec} set took too long to generate." : result == "VersionMismatch" ? "Request refused: PKHeX and Auto-Legality Mod version mismatch." : $"I wasn't able to create a {spec} from that set.";
-                var imsg = $"Oops! {reason}";
-                if (result == "Failed")
-                    imsg += $"\n{AutoLegalityWrapper.GetLegalizationHint(template, sav, pkm)}";
-                await channel.SendMessageAsync(imsg).ConfigureAwait(false);
-                return;
+                if (pkm == null)
+                {
+                    await channel.SendMessageAsync("Failed to generate Pokémon from your set.").ConfigureAwait(false);
+                    return;
+                }
+
+                // -----------------------------
+                // Enforce requested IVs, Nature, and Shiny (Z-A only)
+                // -----------------------------
+                // IVEnforcer and NatureEnforcer are only for Z-A (PA9) Pokemon
+                // For other games, the normal legalization process already handles nature/shiny
+                if (pkm is PA9)
+                {
+                    if (set.IVs != null && set.IVs.Count() == 6)
+                    {
+                        IVEnforcer.ApplyRequestedIVsAndForceNature(
+                            pkm,
+                            set.IVs.ToArray(),
+                            set.Nature,
+                            set.Shiny,
+                            sav,
+                            template
+                        );
+                    }
+                    else
+                    {
+                        // Even if no IVs requested, enforce nature/shiny only for Z-A
+                        NatureEnforcer.ForceNature(pkm, set.Nature, set.Shiny);
+                    }
+                }
+
+                var la = new LegalityAnalysis(pkm);
+                var spec = GameInfo.Strings.Species[set.Species];
+
+                if (!la.Valid)
+                {
+                    var reason = result switch
+                    {
+                        "Timeout" => $"That {spec} set took too long to generate.",
+                        "VersionMismatch" => "Request refused: PKHeX and Auto-Legality Mod version mismatch.",
+                        _ => $"I wasn't able to create a {spec} from that set."
+                    };
+
+                    var imsg = $"Oops! {reason}";
+                    if (result == "Failed")
+                        imsg += $"\n{AutoLegalityWrapper.GetLegalizationHint(set, sav, pkm)}";
+
+                    await channel.SendMessageAsync(imsg).ConfigureAwait(false);
+                    return;
+                }
+
+                var msg = $"Here's your ({result}) legalized PKM & Showdown Set for {spec} ({la.EncounterOriginal.Name})!";
+                await channel.SendPKMAsync(pkm, msg + $"\n{ReusableActions.GetFormattedShowdownText(pkm)}").ConfigureAwait(false);
             }
-            var msg = $"Here's your ({result}) legalized PKM for {spec} ({la.EncounterOriginal.Name})!";
-            await channel.SendPKMAsync(pkm, msg + $"\n{ReusableActions.GetFormattedShowdownText(pkm)}").ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             LogUtil.LogSafe(ex, nameof(AutoLegalityExtensionsDiscord));
-            var msg = $"Oops! An unexpected problem happened with this Showdown Set:\n```{string.Join("\n", set.GetSetLines())}```";
+            var msg = $"Oops! An unexpected problem happened with this Showdown Set:\n```{string.Join("\n", set.GetSetLines())}```\nError: {ex.Message}";
             await channel.SendMessageAsync(msg).ConfigureAwait(false);
         }
     }
