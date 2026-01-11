@@ -296,16 +296,7 @@ public static class QueueHelper<T> where T : PKM, new()
             }
             else
             {
-                 var message = $"▹SUCCESFULLY ADDED◃\n" +
-                 $"//【USER: ||Owner Access Only||】\n" +
-                 $"//【POSITION: {position.Position}】\n";
-
-                if (embedData.SpeciesName != "---")
-                {
-                    message += $"//【POKÉMON: ||{embedData.SpeciesName}||】\n";
-                }
-
-                message += $"//【ETA: {baseEta:F1} Min(s)】";
+                var message = $"{trader.Mention} - Added to the LinkTrade queue. Current Position: {position.Position}. Receiving: {embedData.SpeciesName}.\n{etaMessage}";
                 await context.Channel.SendMessageAsync(message);
             }
         }

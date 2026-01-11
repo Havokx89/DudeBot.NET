@@ -1,3 +1,5 @@
+using PKHeX.Core;
+using SysBot.Pokemon.Z3;
 using System;
 using System.Drawing;
 using System.IO;
@@ -8,6 +10,15 @@ namespace SysBot.Pokemon.WinForms;
 
 static class Program
 {
+    static Program()
+    {
+        var cmd = Environment.GetCommandLineArgs();
+        var cfg = Array.Find(cmd, z => z.EndsWith(".json"));
+        if (cfg != null)
+            ConfigPath = cmd[0];
+
+        PokeTradeBotSWSH.SeedChecker = new Z3SeedSearchHandler<PK8>();
+    }
     public static readonly string WorkingDirectory = Environment.CurrentDirectory = Path.GetDirectoryName(Environment.ProcessPath)!;
     public static string ConfigPath { get; private set; } = Path.Combine(WorkingDirectory, "config.json");
 
@@ -20,10 +31,7 @@ static class Program
 #if NETCOREAPP
         Application.SetHighDpiMode(HighDpiMode.SystemAware);
 #endif
-        var cmd = Environment.GetCommandLineArgs();
-        var cfg = Array.Find(cmd, z => z.EndsWith(".json"));
-        if (cfg != null)
-            ConfigPath = cmd[0];
+
 
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
