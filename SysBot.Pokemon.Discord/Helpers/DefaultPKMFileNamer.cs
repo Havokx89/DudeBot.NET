@@ -4,7 +4,7 @@ namespace SysBot.Pokemon.Discord;
 
 public sealed class DefaultPKMFileNamer : IFileNamer<PKM>
 {
-     public string Name => "Default";
+    public string Name => "Default";
 
     public string GetName(PKM obj)
     {
