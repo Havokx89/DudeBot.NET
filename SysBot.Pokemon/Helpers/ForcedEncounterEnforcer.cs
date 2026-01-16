@@ -6,6 +6,8 @@ public static class ForcedEncounterEnforcer
 {
     public class Entry
     {
+        internal int MetLevel;
+
         public Species Species { get; init; }
         public Nature? ForcedNature { get; init; }
         public int[]? FixedIVs { get; init; }
@@ -18,6 +20,8 @@ public static class ForcedEncounterEnforcer
 
         // Determines if this Entry is IV-only (ignore everything else)
         public bool IVOnly => ForcedNature == null;
+
+        public int Friendship { get; internal set; }
 
         // Matches a PKM
         public bool Matches(PKM pkm)
@@ -67,7 +71,11 @@ public static class ForcedEncounterEnforcer
     private static readonly Entry[] IVNatureEntries = new[]
     {
         new Entry { Species = Species.Darkrai, ForcedNature = Nature.Careful, FixedIVs = new[] { 31,31,18,26,31,21 } },
-        new Entry { Species = Species.Zygarde, Form = 2, ForcedNature = Nature.Quiet, FixedIVs = new[] { 31,31,15,31,28,19 } }
+            // Zygarde - All gennable forms (10%, 50%)
+            // PKHeX form numbering as of Jan 2026: Form 2 = 10%, Form 3 = 50%, Form 4 = Complete
+        new Entry { Species = Species.Zygarde, MetLevel = 84, Form = 2, Friendship = 0, Location = 212, ForcedNature = Nature.Quiet, FixedIVs = new[] { 31,31,15,19,31,28 } },
+
+
     };
 
     // Optional: full static entries with OT/Nickname/etc. (safety checks)
