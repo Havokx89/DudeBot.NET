@@ -224,7 +224,7 @@ public static class QueueHelper<T> where T : PKM, new()
             {
                 footerText += $"\n{userDetailsText}";
             }
-            footerText += $"\nEstimated: {etaMessage} for next trade.";
+            footerText += $"\nEstimated: {etaMessage}";
             footerText += $"\nDudeBot.NET {DudeBot.Version}";
 
             var embedBuilder = new EmbedBuilder()
