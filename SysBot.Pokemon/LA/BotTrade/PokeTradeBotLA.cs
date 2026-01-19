@@ -1397,7 +1397,7 @@ public class PokeTradeBotLA(PokeTradeHub<PA8> Hub, PokeBotState Config) : PokeRo
         bool isMysteryGift = toSend.FatefulEncounter;
 
         // Check if Mystery Gift has legitimate preset OT/TID/SID (not PKHeX defaults)
-        bool hasDefaultTrainerInfo = toSend.OriginalTrainerName.Equals("FreeMons.Org", StringComparison.OrdinalIgnoreCase) &&
+        bool hasDefaultTrainerInfo = toSend.OriginalTrainerName.Equals("DudeBot", StringComparison.OrdinalIgnoreCase) &&
                                     toSend.TID16 == 12345 &&
                                     toSend.SID16 == 54321;
 
