@@ -85,7 +85,7 @@ public static class EmbedHelper
                 .WithTitle("Notice...")
                 .WithDescription(message)
                 .WithTimestamp(DateTimeOffset.Now)
-                .WithThumbnailUrl("https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/dm-legalityerror.gif")
+                .WithThumbnailUrl("https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/dm-legalityerror.gif")
                 .WithColor(Color.Red)
                 .Build();
 
@@ -127,7 +127,7 @@ public static class EmbedHelper
                 .WithTitle("Trade Canceled...")
                 .WithDescription($"Your trade was canceled.\n**Reason**: {reason}")
                 .WithTimestamp(DateTimeOffset.Now)
-                .WithThumbnailUrl("https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/dm-uhoherror.gif")
+                .WithThumbnailUrl("https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/dm-uhoherror.gif")
                 .WithColor(Color.Red)
                 .Build();
 
@@ -169,7 +169,7 @@ public static class EmbedHelper
                 .WithTitle("Here's your Link Trade Code!")
                 .WithDescription($"# {code:0000 0000}\n*I'll notify you when your trade starts!*")
                 .WithTimestamp(DateTimeOffset.Now)
-                .WithThumbnailUrl("https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/dm-tradecode.gif")
+                .WithThumbnailUrl("https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/dm-tradecode.gif")
                 .WithColor(Color.Gold)
                 .Build();
 
@@ -204,7 +204,7 @@ public static class EmbedHelper
 
             if (isMysteryEgg)
             {
-                thumbnailUrl = "https://raw.githubusercontent.com/hexbyt3/sprites/main/mysteryegg3.png";
+                thumbnailUrl = "https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/mysteryegg3.png";
             }
             else
             {
@@ -252,7 +252,7 @@ public static class EmbedHelper
                 .WithTitle("Loading the Trade Menu...")
                 .WithDescription($"**Pokemon**: {speciesName}\n**Trade Code**: {code:0000 0000}")
                 .WithTimestamp(DateTimeOffset.Now)
-                .WithThumbnailUrl("https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/dm-initializingbot.gif")
+                .WithThumbnailUrl("https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/dm-initializingbot.gif")
                 .WithColor(Color.Green);
 
             if (!string.IsNullOrEmpty(message))
@@ -299,7 +299,7 @@ public static class EmbedHelper
                 .WithTitle($"Now Searching...")
                 .WithDescription($"**Waiting For**: {trainerName}\n**My IGN**: {inGameName}\n\n**Insert your Trade Code!**")
                 .WithTimestamp(DateTimeOffset.Now)
-                .WithThumbnailUrl("https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/dm-nowsearching.gif")
+                .WithThumbnailUrl("https://raw.githubusercontent.com/Havokx89/Bot-Sprite-Images/main/dm-nowsearching.gif")
                 .WithColor(Color.DarkGreen);
 
             if (!string.IsNullOrEmpty(message))
