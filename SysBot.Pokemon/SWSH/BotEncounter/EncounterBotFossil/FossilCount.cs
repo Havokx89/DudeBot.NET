@@ -37,7 +37,9 @@ public class FossilCount
 
     private static InventoryPouch8 GetTreasurePouch(ReadOnlySpan<byte> itemsBlock)
     {
-        var pouch = new InventoryPouch8(InventoryType.Treasure, ItemStorage8SWSH.Instance, 999, 0, 20);
+        // The correct constructor for InventoryPouch8 is:
+        // InventoryPouch8(int offset, int maxCount, InventoryType type, IItemStorage info, int pouchDataSize)
+        var pouch = new InventoryPouch8(0, 999, (int)InventoryType.Treasure, ItemStorage8SWSH.Instance, (InventoryType)20);
         pouch.GetPouch(itemsBlock);
         return pouch;
     }

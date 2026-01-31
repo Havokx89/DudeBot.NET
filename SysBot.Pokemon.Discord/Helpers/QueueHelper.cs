@@ -215,7 +215,7 @@ public static class QueueHelper<T> where T : PKM, new()
             var position = Info.CheckPosition(userID, uniqueTradeID, type);
             var botct = Info.Hub.Bots.Count;
             var baseEta = position.Position > botct ? Info.Hub.Config.Queues.EstimateDelay(position.Position, botct) : 0;
-            var etaMessage = $"Wait Estimate: {baseEta:F1} min(s) for trade.";
+            var etaMessage = $"Estimated {baseEta:F1} min(s) for trade.";
             string footerText = $"Current Queue Position: {(position.Position == -1 ? 1 : position.Position)}";
             string trainerMention = trader.Mention;
             string userDetailsText = DetailsExtractor<T>.GetUserDetails(totalTradeCount, tradeDetails, trainerMention);
@@ -224,7 +224,7 @@ public static class QueueHelper<T> where T : PKM, new()
             {
                 footerText += $"\n{userDetailsText}";
             }
-            footerText += $"\nEstimated: {etaMessage}";
+            footerText += $"\n{etaMessage}";
             footerText += $"\nDudeBot.NET {DudeBot.Version}";
 
             var embedBuilder = new EmbedBuilder()
