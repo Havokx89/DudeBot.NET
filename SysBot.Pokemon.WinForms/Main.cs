@@ -25,7 +25,6 @@ Core Development Team:
 
 Special Thanks To:
 - kwsch, Creator of SysBot.NET
-- Gengar, Creator of Mergebot
 - Secludedly, Creator of ZE-Fusionbot
 
 First and foremost, I appreciate the opportunity to have been part of this program.
