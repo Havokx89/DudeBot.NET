@@ -215,7 +215,7 @@ public static class QueueHelper<T> where T : PKM, new()
             var position = Info.CheckPosition(userID, uniqueTradeID, type);
             var botct = Info.Hub.Bots.Count;
             var baseEta = position.Position > botct ? Info.Hub.Config.Queues.EstimateDelay(position.Position, botct) : 0;
-            var etaMessage = $"Wait Estimate: {baseEta:F1} min(s) for trade.";
+            var etaMessage = $"{baseEta:F1} min(s) for next trade.";
             string footerText = $"Current Queue Position: {(position.Position == -1 ? 1 : position.Position)}";
             string trainerMention = trader.Mention;
             string userDetailsText = DetailsExtractor<T>.GetUserDetails(totalTradeCount, tradeDetails, trainerMention);
@@ -224,7 +224,7 @@ public static class QueueHelper<T> where T : PKM, new()
             {
                 footerText += $"\n{userDetailsText}";
             }
-            footerText += $"\nEstimated: {etaMessage} for next trade.";
+            footerText += $"\n{etaMessage} ";
             footerText += $"\nDudeBot.NET {DudeBot.Version}";
 
             var embedBuilder = new EmbedBuilder()
@@ -435,7 +435,7 @@ public static class QueueHelper<T> where T : PKM, new()
                         {
                             footerText += $"\n{userDetailsText}";
                         }
-                        footerText += $"\nWait Estimate: {baseEta:F1} min(s) for batch";
+                        footerText += $"\n{baseEta:F1} min(s) for batch";
                     }
 
                     // Create embed

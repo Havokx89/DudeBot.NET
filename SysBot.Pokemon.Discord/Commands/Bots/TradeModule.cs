@@ -629,7 +629,7 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
 
     #region Private Helper Methods
 
-    private async Task ProcessTradeAsync(int code, string content, bool isHiddenTrade = false)
+      private async Task ProcessTradeAsync(int code, string content, bool isHiddenTrade = false)
     {
         var userID = Context.User.Id;
         if (!await Helpers<T>.EnsureUserNotInQueueAsync(userID))
