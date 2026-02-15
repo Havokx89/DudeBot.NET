@@ -913,14 +913,6 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
                 if (offered == null)
                     return PokeTradeResult.TrainerTooSlow;
 
-                if (Hub.Config.Trade.TradeConfiguration.DisallowTradeEvolve &&
-                    TradeEvolutions.WillTradeEvolve(
-                        offered.Species,
-                        offered.Form,
-                        offered.HeldItem,
-                        poke.TradeData.Species))
-                    return PokeTradeResult.TradeEvolveNotAllowed;
-
                 SetTradeState(TradeState.Confirming);
 
                 var tradeResult = await ConfirmAndStartTrading(
@@ -1404,17 +1396,6 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
             await DisconnectFromTrade(token).ConfigureAwait(false);
             await ExitTradeToOverworld(false, token).ConfigureAwait(false);
             return PokeTradeResult.TrainerOfferCanceledQuick;
-        }
-
-        // Check if the offered Pokemon will evolve upon trade BEFORE confirming
-        if (Hub.Config.Trade.TradeConfiguration.DisallowTradeEvolve && TradeEvolutions.WillTradeEvolve(offered.Species, offered.Form, offered.HeldItem, toSend.Species))
-        {
-            Log("Trade cancelled because trainer offered a Pokémon that would evolve upon trade.");
-            SetTradeState(TradeState.Failed);
-            poke.SendNotification(this, "Trade cancelled. You cannot trade a Pokémon that will evolve. To prevent this, either give your Pokémon an Everstone to hold, or trade a different Pokémon.");
-            await DisconnectFromTrade(token).ConfigureAwait(false);
-            await ExitTradeToOverworld(false, token).ConfigureAwait(false);
-            return PokeTradeResult.TradeEvolveNotAllowed;
         }
 
         Log("Selecting \"Trade it.\" Now waiting for trade animation to begin...");
