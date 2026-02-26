@@ -631,6 +631,10 @@ public sealed partial class SysCord<T> where T : PKM, new()
                 await SysCord<T>.RespondToThanksMessage(msg).ConfigureAwait(false);
                 return;
             }
+            if (msg.Attachments.Count > 0)
+            {
+                await TryHandleAttachmentAsync(msg).ConfigureAwait(false);
+            }
 
             char[] allowedPrefixes = new[]
             {
