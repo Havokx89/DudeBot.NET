@@ -632,6 +632,11 @@ public sealed partial class SysCord<T> where T : PKM, new()
                 return;
             }
 
+            if (msg.Attachments.Count > 0)
+            {
+                await TryHandleAttachmentAsync(msg).ConfigureAwait(false);
+            }
+
             char[] allowedPrefixes = new[]
             {
     '$', '!', '.', '=', '%', '~', '-', '+', ',', '/', '?', '*', '^',
@@ -687,12 +692,6 @@ public sealed partial class SysCord<T> where T : PKM, new()
             var handled = await TryHandleCommandAsync(msg, context, argPos);
             if (handled)
                 return;
-
-
-            if (msg.Attachments.Count > 0)
-            {
-                await TryHandleAttachmentAsync(msg).ConfigureAwait(false);
-            }
         }
         catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.InsufficientPermissions) // Missing Permissions
         {
