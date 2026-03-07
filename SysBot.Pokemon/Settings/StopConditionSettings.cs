@@ -20,10 +20,10 @@ public class StopConditionSettings
     [Category(StopConditions), Description("Stop only on Pokémon of the specified nature.")]
     public Nature TargetNature { get; set; } = Nature.Random;
 
-    [Category(StopConditions), Description("Minimum accepted IVs in the format HP/Atk/Def/SpA/SpD/Spe. Use \"x\" for unchecked IVs and \"/\" as a separator.")]
+    [Category(StopConditions), Description("Minimum accepted IVs in the format HP/Atk/Def/SpA/SpD/Spe. Use \"x\" for unchecked IVs, \"s\" to match 0 or 31, and \"/\" as a separator.")]
     public string TargetMinIVs { get; set; } = "";
 
-    [Category(StopConditions), Description("Maximum accepted IVs in the format HP/Atk/Def/SpA/SpD/Spe. Use \"x\" for unchecked IVs and \"/\" as a separator.")]
+    [Category(StopConditions), Description("Maximum accepted IVs in the format HP/Atk/Def/SpA/SpD/Spe. Use \"x\" for unchecked IVs, \"s\" to match 0 or 31 and \"/\" as a separator.")]
     public string TargetMaxIVs { get; set; } = "";
 
     [Category(StopConditions), Description("Selects the shiny type to stop on.")]
@@ -89,13 +89,7 @@ public class StopConditionSettings
         Span<int> pkIVList = stackalloc int[6];
         pk.GetIVs(pkIVList);
         (pkIVList[5], pkIVList[3], pkIVList[4]) = (pkIVList[3], pkIVList[4], pkIVList[5]);
-
-        for (int i = 0; i < 6; i++)
-        {
-            if (targetminIVs[i] > pkIVList[i] || targetmaxIVs[i] < pkIVList[i])
-                return false;
-        }
-        return true;
+        return MatchesTargetIVs(pkIVList, targetminIVs, targetmaxIVs);
     }
 
     public static void InitializeTargetIVs(PokeTradeHubConfig config, out int[] min, out int[] max)
@@ -120,7 +114,14 @@ public class StopConditionSettings
             if (i < splitIVs.Length)
             {
                 var str = splitIVs[i];
-                if (int.TryParse(str, out var val))
+                // Special case where we are matching either 0 or 31.
+                if (str.Equals("s", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    targetIVs[i] = 99;
+                    continue;
+                }
+                // Any other numerical IV value.
+                else if (int.TryParse(str, out var val))
                 {
                     targetIVs[i] = val;
                     continue;
@@ -131,6 +132,23 @@ public class StopConditionSettings
         return targetIVs;
     }
 
+
+    private static bool MatchesTargetIVs(ReadOnlySpan<int> ivs, ReadOnlySpan<int> min, ReadOnlySpan<int> max)
+    {
+        for (int i = 0; i < 6; i++)
+        {
+            if (!MatchesTargetIVs(ivs[i], min[i], max[i]))
+                return false;
+        }
+        return true;
+    }
+
+    private static bool MatchesTargetIVs(int value, int min, int max)
+    {
+        if (min is 99 || max is 99)
+            return value is 0 or 31;
+        return min <= value && value <= max;
+    }
     private static bool HasMark(IRibbonIndex pk)
     {
         for (var mark = RibbonIndex.MarkLunchtime; mark <= RibbonIndex.MarkSlump; mark++)
