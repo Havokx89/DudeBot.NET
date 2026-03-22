@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Commands;
+using Discord.Net;
 using Discord.WebSocket;
 using PKHeX.Core;
 using SysBot.Base;
@@ -127,7 +128,21 @@ public class TradeStartModule<T> : ModuleBase<SocketCommandContext> where T : PK
                 .WithTimestamp(DateTime.Now)
                 .Build();
 
-            await c.SendMessageAsync(embed: embed);
+            try
+            {
+                await c.SendMessageAsync(embed: embed).ConfigureAwait(false);
+            }
+            catch (HttpException ex) when (ex.HttpCode is System.Net.HttpStatusCode.ServiceUnavailable
+                                                       or System.Net.HttpStatusCode.GatewayTimeout
+                                                       or System.Net.HttpStatusCode.BadGateway)
+            {
+                // Discord is temporarily unavailable; skip this notification rather than crashing.
+                LogUtil.LogError($"Trade start notification skipped (Discord {(int)ex.HttpCode}): {ex.Message}", "TradeStartModule");
+            }
+            catch (Exception ex)
+            {
+                LogUtil.LogError($"Trade start notification failed: {ex.Message}", "TradeStartModule");
+            }
         }
 
         SysCord<T>.Runner.Hub.Queues.Forwarders.Add(Logger);
