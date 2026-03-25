@@ -252,9 +252,14 @@ public abstract class PokeRoutineExecutor7LGPE : PokeRoutineExecutor<PB7>
     {
         var slotofs = GetSlotOffset(box, slot);
         var StoredLength = SlotSize - 0x1c;
-        await Connection.WriteBytesAsync(pk.EncryptedPartyData.AsSpan(0, StoredLength).ToArray(), (uint)slotofs, token);
-        await Connection.WriteBytesAsync(pk.EncryptedPartyData.AsSpan(StoredLength).ToArray(), (uint)(slotofs + (ulong)StoredLength + 0x70), token);
-    }
+        
+        // Get encrypted stored data
+        var encryptedData = new byte[pk.SIZE_STORED];
+        pk.WriteEncryptedDataStored(encryptedData);
+        
+        await Connection.WriteBytesAsync(encryptedData.AsSpan(0, StoredLength).ToArray(), (uint)slotofs, token);
+        await Connection.WriteBytesAsync(encryptedData.AsSpan(StoredLength).ToArray(), (uint)(slotofs + (ulong)StoredLength + 0x70), token);
+}
 
     /// public async Task ActivateCatchCombo(PokeTradeHub<PB7> hub, bool activate, CancellationToken token)
     ///  {
