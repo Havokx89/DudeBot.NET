@@ -69,14 +69,14 @@ public class TradeSettings : IBotStateSettings, ICountSettings
         [Category(TradeConfig), Description("If set to True, each valid Pokemon will come with all suggested Relearnable Moves without the need for a batch command."), DisplayName("Suggest Relearnable Moves by Default")]
         public bool SuggestRelearnMoves { get; set; } = true;
 
-        [Category(TradeConfig), Description("Toggle to allow or disallow batch trades."), DisplayName("Allow Batch Trades")]
-        public bool AllowBatchTrades { get; set; } = true;
-
         [Category(TradeConfig), Description("Toggle to give users the option to use the BatchNormalizer, which utilizes Showdown in place of batch commands. Refer to the Wiki for details."), DisplayName("Batch Commands to Showdown")]
         public bool BatchNormalizer { get; set; } = true;
 
-        [Category(TradeConfig), Description("Maximum pokemons of single trade. Batch mode will be closed if this configuration is less than 1"), DisplayName("Maximum Pokémon per Trade")]
-        public int MaxPkmsPerTrade { get; set; } = 1;
+        [Category(TradeConfig), Description("Toggle to allow or disallow batch trades."), DisplayName("Allow Batch Trades")]
+        public bool AllowBatchTrades { get; set; } = true;
+
+        [Category(TradeConfig), Description("Maximum pokemons of single trade. Batch mode will default to 3 if this configuration is less than 1"), DisplayName("Maximum Pokémon per Trade")]
+        public int MaxPkmsPerTrade { get; set; } = 3;
 
         [Category(TradeConfig), Description("Dump Trade: Dumping routine will stop after a maximum number of dumps from a single user."), DisplayName("Maximum Dumps per Trade")]
         public int MaxDumpsPerTrade { get; set; } = 20;
