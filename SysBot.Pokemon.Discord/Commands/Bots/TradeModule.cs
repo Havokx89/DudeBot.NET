@@ -6,6 +6,7 @@ using PKHeX.Core.AutoMod;
 using SysBot.Base;
 using SysBot.Pokemon.Discord.Helpers;
 using SysBot.Pokemon.Helpers;
+using SysBot.Pokemon.Discord.Helpers.TradeModule;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -542,10 +543,21 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
 
     [Command("batchTrade")]
     [Alias("bt")]
-    [Summary("Makes the bot trade multiple Pokémon from the provided list, up to a maximum of 4 trades.")]
+    [Summary("Makes the bot trade multiple Pokémon from the provided list.")]
     [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
     public async Task BatchTradeAsync([Summary("List of Showdown Sets separated by '---'")][Remainder] string content)
     {
+        var tradeConfig = SysCord<T>.Runner.Config.Trade.TradeConfiguration;
+
+        // Check if batch trades are allowed
+        if (!tradeConfig.AllowBatchTrades)
+        {
+            var app = await Context.Client.GetApplicationInfoAsync().ConfigureAwait(false);
+            await Helpers<T>.ReplyAndDeleteAsync(Context,
+                $"Batch trades are currently disabled by the bot administrator.", 6);
+            return;
+        }
+
         var userID = Context.User.Id;
         if (!await Helpers<T>.EnsureUserNotInQueueAsync(userID))
         {
@@ -556,11 +568,15 @@ public class TradeModule<T> : ModuleBase<SocketCommandContext> where T : PKM, ne
         content = BatchNormalizer.NormalizeBatchCommands(content);
         content = ReusableActions.StripCodeBlock(content);
         var trades = BatchHelpers<T>.ParseBatchTradeContent(content);
-        const int maxTradesAllowed = 4;
-        if (maxTradesAllowed < 1 || trades.Count > maxTradesAllowed)
+
+
+        // Use configured max trades per batch, default to 3 if less than 1
+        int maxTradesAllowed = tradeConfig.MaxPkmsPerTrade > 0 ? tradeConfig.MaxPkmsPerTrade : 3;
+
+        if (trades.Count > maxTradesAllowed)
         {
             await Helpers<T>.ReplyAndDeleteAsync(Context,
-                $"You can only process up to {maxTradesAllowed} trades at a time. Please reduce the number of trades in your batch.", 5);
+                $"You can only process up to {maxTradesAllowed} trades at a time.\nPlease reduce the number of trades in your batch.", 5);
             return;
         }
 
