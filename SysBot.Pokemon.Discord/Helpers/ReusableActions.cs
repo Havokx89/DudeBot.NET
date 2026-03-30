@@ -120,37 +120,37 @@ public static class ReusableActions
         // =============================
         // FIXED IV PLACEMENT LOGIC
         // =============================
-        if (pkm.IVs is int[] pkmIVs && pkmIVs.Length == 6)
-        {
-            // Map PKHeX IV order (HP, Atk, Def, Spe, SpA, SpD) → Showdown (HP, Atk, Def, SpA, SpD, Spe)
-            int hp = pkmIVs[0];
-            int atk = pkmIVs[1];
-            int def = pkmIVs[2];
-            int spe = pkmIVs[3];
-            int spa = pkmIVs[4];
-            int spd = pkmIVs[5];
+        Span<int> pkmIVs = stackalloc int[6];
+        pkm.GetIVs(pkmIVs);
 
-            string ivLine = $"IVs: {hp} HP / {atk} Atk / {def} Def / {spa} SpA / {spd} SpD / {spe} Spe";
+        // Map PKHeX IV order (HP, Atk, Def, Spe, SpA, SpD) → Showdown (HP, Atk, Def, SpA, SpD, Spe)
+        int hp = pkmIVs[0];
+        int atk = pkmIVs[1];
+        int def = pkmIVs[2];
+        int spe = pkmIVs[3];
+        int spa = pkmIVs[4];
+        int spd = pkmIVs[5];
 
-            // Remove old IV line if exists
-            int oldIVIndex = lines.FindIndex(l => l.StartsWith("IVs:"));
-            if (oldIVIndex >= 0)
-                lines.RemoveAt(oldIVIndex);
+        string ivLine = $"IVs: {hp} HP / {atk} Atk / {def} Def / {spa} SpA / {spd} SpD / {spe} Spe";
 
-            // Determine placement
-            int evIndex = lines.FindIndex(l => l.StartsWith("EVs:"));
-            int ballLineIndex = lines.FindIndex(l => l.StartsWith("Ball:"));
-            natureIndex = lines.FindIndex(l => l.Contains("Nature")); // reuse variable safely
+        // Remove old IV line if exists
+        int oldIVIndex = lines.FindIndex(l => l.StartsWith("IVs:"));
+        if (oldIVIndex >= 0)
+            lines.RemoveAt(oldIVIndex);
 
-            if (evIndex >= 0)
-                lines.Insert(evIndex + 1, ivLine);
-            else if (ballLineIndex >= 0)
-                lines.Insert(ballLineIndex, ivLine);
-            else if (natureIndex >= 0)
-                lines.Insert(natureIndex, ivLine);
-            else
-                lines.Insert(1, ivLine);
-        }
+        // Determine placement
+        int evIndex = lines.FindIndex(l => l.StartsWith("EVs:"));
+        int ballLineIndex = lines.FindIndex(l => l.StartsWith("Ball:"));
+        natureIndex = lines.FindIndex(l => l.Contains("Nature")); // reuse variable safely
+
+        if (evIndex >= 0)
+            lines.Insert(evIndex + 1, ivLine);
+        else if (ballLineIndex >= 0)
+            lines.Insert(ballLineIndex, ivLine);
+        else if (natureIndex >= 0)
+            lines.Insert(natureIndex, ivLine);
+        else
+            lines.Insert(1, ivLine);
 
         // Clean up empty lines and join
         lines = lines.Where(l => !string.IsNullOrWhiteSpace(l)).ToList();

@@ -286,7 +286,7 @@ namespace SysBot.Pokemon.Discord.Modules
                 var index = files.IndexOf(item) + 1;
 
                 // Get the file extension, trim whitespace, and uppercase it
-                var ext = Path.GetExtension(item)?.Trim().ToUpperInvariant() ?? "";
+                var ext = (Path.GetExtension(item)?.Trim() ?? "").ToUpperInvariant();
 
                 // Lookup in dictionary
                 string game = extensionToGame.TryGetValue(ext, out var g) ? g : "Unknown";
