@@ -959,6 +959,14 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
 
                 completedTrades++;
 
+                // Log each completed batch trade with NID
+                if (cachedTradePartnerInfo != null)
+                {
+                    var partner = new TradePartnerPLZA(cachedTradePartnerInfo);
+                    var trainerNID = await GetTradePartnerNID(token).ConfigureAwait(false);
+                    RecordUtil<PokeTradeBotPLZA>.Record($"Batch-{i + 1}/{totalBatchTrades}\t{trainerNID:X16}\t{partner.TrainerName}\t{poke.Trainer.TrainerName}\t{poke.ID}\t{poke.TradeData.Species}\t{poke.TradeData.EncryptionConstant:X8}\t{received.Species}\t{received.EncryptionConstant:X8}");
+                }
+
                 // Log animation wait message after each successful trade except the last
                 if (i + 1 < totalBatchTrades)
                 {
@@ -997,6 +1005,14 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
             var allReceived = BatchTracker.GetReceivedPokemon(originalTrainerID);
             if (allReceived.Count > 0)
                 poke.TradeFinished(this, allReceived[^1]);
+
+            // Log successful batch completion with NID
+            if (cachedTradePartnerInfo != null)
+            {
+                var partner = new TradePartnerPLZA(cachedTradePartnerInfo);
+                var trainerNID = await GetTradePartnerNID(token).ConfigureAwait(false);
+                LogSuccessfulTrades(poke, trainerNID, partner.TrainerName);
+            }
 
             Hub.Queues.CompleteTrade(this, startingDetail);
             return PokeTradeResult.Success;
@@ -1352,6 +1368,13 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         if (poke.Type == PokeTradeType.Dump)
         {
             var result = await ProcessDumpTradeAsync(poke, token).ConfigureAwait(false);
+
+            // Log NID for dump trades
+            if (result == PokeTradeResult.Success)
+            {
+                LogSuccessfulTrades(poke, trainerNID, tradePartner.TrainerName);
+            }
+
             await ExitTradeToOverworld(false, token).ConfigureAwait(false);
             return result;
         }
@@ -1438,7 +1461,12 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
 
         poke.TradeFinished(this, received);
         UpdateCountsAndExport(poke, received, toSend);
+
+        // Log successful trade and NID
         LogSuccessfulTrades(poke, trainerNID, tradePartner.TrainerName);
+
+        // Log RecordUtil for all completed trades (including Clone)
+        RecordUtil<PokeTradeBotPLZA>.Record($"Finished\t{trainerNID:X16}\t{tradePartner.TrainerName}\t{poke.Trainer.TrainerName}\t{poke.ID}\t{toSend.Species}\t{toSend.EncryptionConstant:X8}\t{received.Species}\t{received.EncryptionConstant:X8}");
 
         await ExitTradeToOverworld(false, token).ConfigureAwait(false);
         return PokeTradeResult.Success;
