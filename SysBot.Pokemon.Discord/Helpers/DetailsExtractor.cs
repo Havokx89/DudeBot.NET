@@ -188,7 +188,7 @@ public static class DetailsExtractor<T> where T : PKM, new()
         embedData.MetDate = pk.MetDate.ToString();
         embedData.MetLevel = pk.MetLevel;
         var metLocationName = strings.GetLocationName(false, pk.MetLocation, pk.Format, pk.Generation, (GameVersion)pk.Version);
-        embedData.MetLocation = string.IsNullOrWhiteSpace(metLocationName) ? $"ID {pk.MetLocation}" : metLocationName;
+        embedData.MetLocation = string.IsNullOrWhiteSpace(metLocationName) ? $"ID {pk.MetLocation}" : $"{metLocationName} **(ID: {pk.MetLocation})**";
         embedData.MovesDisplay = string.Join("\n", embedData.Moves);
         embedData.PokemonDisplayName = pk.IsNicknamed ? pk.Nickname : embedData.SpeciesName;
 
