@@ -218,6 +218,12 @@ public static class DetailsExtractor<T> where T : PKM, new()
         if (tradeCount >= 600) medals++;
         if (tradeCount >= 650) medals++;
         if (tradeCount >= 700) medals++;
+        if (tradeCount >= 750) medals++;
+        if (tradeCount >= 800) medals++;
+        if (tradeCount >= 850) medals++;
+        if (tradeCount >= 900) medals++;
+        if (tradeCount >= 950) medals++;
+        if (tradeCount >= 1000) medals++;
         // Add more milestones if necessary
         return medals;
     }
