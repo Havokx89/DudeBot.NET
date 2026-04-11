@@ -2,6 +2,7 @@ using PKHeX.Core;
 using SysBot.Base;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -203,7 +204,9 @@ public abstract class PokeRoutineExecutor9SV : PokeRoutineExecutor<PK9>
         }
 
         pkm.ResetPartyStats();
-        return SwitchConnection.WriteBytesAbsoluteAsync(pkm.EncryptedBoxData, offset, token);
+        var data = new byte[pkm.SIZE_STORED];
+        pkm.WriteEncryptedDataStored(data);
+        return SwitchConnection.WriteBytesAbsoluteAsync(data, offset, token);
     }
 
     public Task SetCurrentBox(byte box, CancellationToken token)
@@ -306,5 +309,16 @@ public abstract class PokeRoutineExecutor9SV : PokeRoutineExecutor<PK9>
         if (!valid)
             return false;
         return await IsOnOverworld(offset, token).ConfigureAwait(false);
+    }
+
+    public static void DumpPokemon<T>(string folder, string subfolder, T pk) where T : PKM
+    {
+        if (!Directory.Exists(folder))
+            return;
+        var dir = Path.Combine(folder, subfolder);
+        Directory.CreateDirectory(dir);
+        var fn = Path.Combine(dir, PathUtil.CleanFileName(pk.FileName));
+        File.WriteAllBytes(fn, pk.Data);
+        LogUtil.LogInfo("Dump", $"Saved file: {fn}");
     }
 }
