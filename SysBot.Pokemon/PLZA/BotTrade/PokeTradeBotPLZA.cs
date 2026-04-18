@@ -334,9 +334,14 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
         {
             // Validate language ID - if invalid, default to English (2)
             int language = tradePartner.Language;
+            Log($"[DEBUG] TradePartner Language value: {language} ({TrainerDisplayHelper.GetLanguageString(language)})");
             if (language < 1 || language > 12) // Valid language IDs are 1-12
+            {
+                Log($"[DEBUG] Language {language} is invalid, defaulting to English (2)");
                 language = 2; // English
+            }
             cln.Language = language;
+            Log($"[DEBUG] Set Pokemon Language to: {language} ({(LanguageID)language})");
         }
 
         ClearOTTrash(cln, tradePartner);
@@ -646,8 +651,16 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
 
             // Read gender and language from TID location offset
             var genderLang = await SwitchConnection.ReadBytesAbsoluteAsync(tidAddr, 0x08, token).ConfigureAwait(false);
-            trader_info.Data[0x04] = genderLang[0x05]; // Gender at TID base + 0x05
-            trader_info.Data[0x05] = genderLang[0x07]; // Language at TID base + 0x07
+
+            // Debug: Log all bytes to diagnose language issue
+            Log($"[DEBUG] Gender/Lang bytes: {BitConverter.ToString(genderLang)}");
+            Log($"[DEBUG] Byte[0x04] (assigned to Gender): {genderLang[0x04]}");
+            Log($"[DEBUG] Byte[0x05] (assigned to Language): {genderLang[0x05]}");
+            if (genderLang.Length > 0x07)
+                Log($"[DEBUG] Byte[0x07] (MyStatus Language offset): {genderLang[0x07]}");
+
+            trader_info.Data[0x04] = genderLang[0x04]; // Gender at TID base + 0x04
+            trader_info.Data[0x05] = genderLang[0x05]; // Language at TID base + 0x05
         }
         else
         {
@@ -662,8 +675,8 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
 
             // Read gender and language from fallback TID location
             var genderLang = await SwitchConnection.ReadBytesAbsoluteAsync(fallbackTidAddr, 0x08, token).ConfigureAwait(false);
-            trader_info.Data[0x04] = genderLang[0x05]; // Gender at fallback TID + 0x05
-            trader_info.Data[0x05] = genderLang[0x07]; // Language at fallback TID + 0x07
+            trader_info.Data[0x04] = genderLang[0x04]; // Gender at fallback TID + 0x04
+            trader_info.Data[0x05] = genderLang[0x05]; // Language at fallback TID + 0x05
         }
 
         return trader_info;
