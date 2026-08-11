@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DudeBot.NET — Nintendo Switch Automation Framework</title>
+    <meta name="description" content="Sysbot.NET fork for remote control automation of Nintendo Switch Pokémon games via sys-botbase.">
+    <!-- FontAwesome & Google Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-card: #21262d;
+            --border-color: #30363d;
+            --accent-red: #e63946;
+            --accent-blue: #3a86ff;
+            --accent-gradient: linear-gradient(135deg, #e63946 0%, #3a86ff 100%);
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+            --font-main: 'Inter', sans-serif;
+            --font-code: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        a:hover {
+            color: #64b5f6;
+        }
+
+        /* Header / Nav */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background-color: rgba(13, 17, 23, 0.85);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1.3rem;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        nav a {
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        nav a:hover {
+            color: var(--text-main);
+        }
+
+        .nav-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--text-muted);
+            background: var(--border-color);
+            color: #fff;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 5rem 2rem 4rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(58, 134, 255, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid rgba(58, 134, 255, 0.3);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero h1 {
+            font-size: 3.2rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            letter-spacing: -1px;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 750px;
+            margin: 0 auto 2.5rem;
+        }
+
+        .cta-group {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: #fff;
+            font-weight: 700;
+            padding: 0.8rem 1.8rem;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 20px rgba(230, 57, 70, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(230, 57, 70, 0.4);
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #5865F2; /* Discord Purple */
+            color: #fff;
+            font-weight: 700;
+            padding: 0.8rem 1.8rem;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: #4752C4;
+            color: #fff;
+            transform: translateY(-2px);
+        }
+
+        /* Architecture / Feature Grid */
+        .section-title {
+            text-align: center;
+            margin: 4rem 0 1rem;
+            font-size: 2rem;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 3rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 4rem;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.8rem;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-4px);
+        }
+
+        .card-icon {
+            font-size: 1.8rem;
+            color: var(--accent-blue);
+            margin-bottom: 1rem;
+        }
+
+        .card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Code/Architecture Overview */
+        .arch-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2.5rem;
+            margin-bottom: 4rem;
+        }
+
+        .arch-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .arch-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 1.2rem;
+            border-radius: 8px;
+        }
+
+        .arch-item code {
+            font-family: var(--font-code);
+            color: var(--accent-red);
+            font-weight: 600;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border-color);
+            padding: 3rem 2rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            background-color: var(--bg-secondary);
+        }
+
+        footer p {
+            margin-bottom: 0.8rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.2rem; }
+            header { flex-direction: column; gap: 1rem; }
+            nav ul { flex-wrap: wrap; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Header -->
+    <header>
+        <div class="logo">
+            <i class="fa-solid fa-gamepad"></i> DudeBot.NET
+        </div>
+        <nav>
+            <ul>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="#community">Community</a></li>
+                <li>
+                    <a href="https://github.com/Havokx89/DudeBot.NET" target="_blank" class="nav-btn">
+                        <i class="fa-brands fa-github"></i> GitHub
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <span class="badge"><i class="fa-solid fa-code-fork"></i> Enhanced SysBot.NET Fork</span>
+        <h1>SysBot.NET for the Dudes & Dudettes</h1>
+        <p>
+            An advanced .NET automation framework powering remote Nintendo Switch console control, 
+            automated Pokémon distribution, and Discord queue management via <code>sys-botbase</code>.
+        </p>
+        <div class="cta-group">
+            <a href="https://github.com/Havokx89/DudeBot.NET/releases" target="_blank" class="btn-primary">
+                <i class="fa-solid fa-download"></i> Download Latest Release
+            </a>
+            <a href="https://www.chinchou.net/" target="_blank" class="btn-secondary">
+                <i class="fa-brands fa-discord"></i> Join Support Discord
+            </a>
+        </div>
+    </section>
+
+    <!-- Key Features Section -->
+    <div class="container" id="features">
+        <h2 class="section-title">Core Capabilities</h2>
+        <p class="section-subtitle">Everything required to manage automated Nintendo Switch bots</p>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-icon"><i class="fa-solid fa-desktop"></i></div>
+                <h3>WinForms GUI Launcher</h3>
+                <p>Simple and intuitive desktop interface to configure, monitor, start, and stop individual Pokémon bots with real-time logging and JSON config saving.</p>
+            </div>
+
+            <div class="card">
+                <div class="card-icon"><i class="fa-brands fa-discord"></i></div>
+                <h3>Discord Integration</h3>
+                <p>Remotely command and control bot queues through Discord. Set up role-based permissions, automated trade queues, and custom request messaging.</p>
+            </div>
+
+            <div class="card">
+                <div class="card-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                <h3>PKHeX & ALM Power</h3>
+                <p>Seamlessly powered by PKHeX and Auto-Legality Mod (ALM) for automated Pokémon legal template validation and generation on the fly.</p>
+            </div>
+
+            <div class="card">
+                <div class="card-icon"><i class="fa-solid fa-network-wired"></i></div>
+                <h3>sys-botbase Client</h3>
+                <p>Asynchronous and synchronous networking core capable of sending gamepad inputs and reading/writing console memory over LAN.</p>
+            </div>
+        </div>
+
+        <!-- System Architecture Overview -->
+        <div class="arch-section" id="architecture">
+            <h2><i class="fa-solid fa-cubes"></i> Repository Architecture</h2>
+            <p style="color: var(--text-muted); margin-top: 0.5rem;">Modular .NET 9 solution structure breakdown:</p>
+
+            <div class="arch-list">
+                <div class="arch-item">
+                    <code>SysBot.Base</code>
+                    <p>Core low-level networking and connection logic for interacting directly with sys-botbase.</p>
+                </div>
+                <div class="arch-item">
+                    <code>SysBot.Pokemon</code>
+                    <p>Game logic layer implementing Pokémon trade sequences and console actions.</p>
+                </div>
+                <div class="arch-item">
+                    <code>SysBot.Pokemon.WinForms</code>
+                    <p>The primary graphical user interface executable for bot host operators.</p>
+                </div>
+                <div class="arch-item">
+                    <code>SysBot.Pokemon.Discord</code>
+                    <p>Discord bot service layer built on Discord.Net for processing user queue requests.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer id="community">
+        <p><strong>DudeBot.NET</strong> is a community-driven fork maintained by Havokx89.</p>
+        <p>
+            <a href="https://github.com/Havokx89/DudeBot.NET" target="_blank">GitHub Repository</a> • 
+            <a href="https://www.chinchou.net/" target="_blank">Support Discord</a> • 
+            <a href="https://github.com/Havokx89/DudeBot.NET/blob/master/LICENSE" target="_blank">License</a>
+        </p>
+        <p style="font-size: 0.8rem; opacity: 0.6; margin-top: 1rem;">
+            Note: Not affiliated with or endorsed by Nintendo, Game Freak, or the PKHeX project.
+        </p>
+    </footer>
+
+</body>
+</html>
